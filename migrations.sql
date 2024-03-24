@@ -1,0 +1,28 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS users (
+    public_key VARCHAR(255) PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+
+CREATE TABLE IF NOT EXISTS tokens (
+    mint_public_key VARCHAR(255) PRIMARY KEY,
+    symbol VARCHAR(50) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+
+CREATE TABLE IF NOT EXISTS positions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_pubkey VARCHAR(255) NOT NULL,
+    mint_pubkey VARCHAR(255) NOT NULL,
+    quantity NUMERIC NOT NULL,
+    purchase_price NUMERIC NOT NULL,
+    current_value NUMERIC NOT NULL,
+    purchase_date TIMESTAMPTZ NOT NULL,
+    last_updated TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_pubkey) REFERENCES users(public_key),
+    FOREIGN KEY (mint_pubkey) REFERENCES tokens(mint_public_key),
+)
+

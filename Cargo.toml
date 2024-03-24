@@ -1,0 +1,14 @@
+[package]
+name = "solspinner"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "0.7.4"
+chrono = "0.4.35"
+serde = { version = "1.0.197", features = ["derive"] }
+shuttle-axum = "0.42.0"
+shuttle-runtime = "0.42.0"
+shuttle-shared-db = { version = "0.42.0", features = ["sqlx", "postgres"] }
+sqlx = { version = "0.7.4", features = ["postgres", "runtime-tokio-rustls", "chrono"] }
+tokio = "1.28.2"
