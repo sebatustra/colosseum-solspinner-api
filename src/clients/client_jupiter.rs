@@ -42,15 +42,15 @@ impl JupiterClient {
 #[allow(non_snake_case)]
 struct JupiterResponse {
     data: HashMap<String, TokenData>,
-    timeTaken: f64
+    _timeTaken: f64
 }
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Debug)]
 struct TokenData {
-    id: String,
-    mintSymbol: String,
-    vsToken: String,
-    vsTokenSymbol: String,
+    _id: String,
+    _mintSymbol: String,
+    _vsToken: String,
+    _vsTokenSymbol: String,
     price: f64
 }
