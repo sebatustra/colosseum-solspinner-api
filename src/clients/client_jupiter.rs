@@ -20,10 +20,16 @@ impl JupiterClient {
         
         let request = reqwest::get(query_url)
             .await
-            .map_err(|_| crate::errors::ApiError::JupiterFetchFail)?
+            .map_err(|e| {
+                println!("Jupiter client failed fetching data. Error: {}", e);
+                crate::errors::ApiError::JupiterFetchFail
+            })?
             .json::<JupiterResponse>()
             .await
-            .map_err(|_| crate::errors::ApiError::JupiterDeserializationFail)?;
+            .map_err(|e| {
+                println!("Jupiter client failed serializing data. Error: {}", e);
+                crate::errors::ApiError::JupiterDeserializationFail
+            })?;
 
         let mut price_updates: Vec<PriceUpdate> = Vec::with_capacity(token_mints.len());
         
@@ -42,15 +48,10 @@ impl JupiterClient {
 #[allow(non_snake_case)]
 struct JupiterResponse {
     data: HashMap<String, TokenData>,
-    _timeTaken: f64
 }
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Debug)]
 struct TokenData {
-    _id: String,
-    _mintSymbol: String,
-    _vsToken: String,
-    _vsTokenSymbol: String,
     price: f64
 }

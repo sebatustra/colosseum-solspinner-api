@@ -7,6 +7,7 @@ pub enum ApiError {
     // token errors
     TokenCreateFail,
     TokenGetFail,
+    TokenUpdateFail,
 
     // user errors
     UserCreateFail,
@@ -15,7 +16,6 @@ pub enum ApiError {
     // position errors
     PositionCreateFail,
     PositionGetFail,
-    PositionUpdateFail,
 
     // client errors
     JupiterFetchFail,
@@ -30,11 +30,11 @@ impl IntoResponse for ApiError {
             // positions
             ApiError::PositionCreateFail => "Error creating the position",
             ApiError::PositionGetFail => "Error fetching positions",
-            ApiError::PositionUpdateFail => "Error updating positions",
 
             // tokens
             ApiError::TokenCreateFail => "Error creating the token",
             ApiError::TokenGetFail => "Error fetching tokens",
+            ApiError::TokenUpdateFail => "Error updating the token",
 
             // users
             ApiError::UserCreateFail => "Error creating the user",

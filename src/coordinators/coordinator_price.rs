@@ -2,7 +2,7 @@ use axum::{extract::State, routing::post, Json, Router};
 use crate::{
     clients::client_jupiter::JupiterClient, 
     errors::Result, 
-    models::model_position::Position, 
+    models::{model_position::Position, model_token::Token}, 
     AppState
 };
 
@@ -16,7 +16,7 @@ pub fn routes(state: AppState) -> Router {
 
 pub async fn update_all_positions_prices(
     State(state): State<AppState>
-) -> Result<Json<Vec<Position>>> {
+) -> Result<Json<Vec<Token>>> {
     println!("->> {:<12} - update_all_positions_prices", "HANDLER");
 
 
@@ -24,11 +24,11 @@ pub async fn update_all_positions_prices(
 
     let price_updates = JupiterClient::get_tokens_price(mints).await?;
 
-    let mut results: Vec<Position> = Vec::new();
+    let mut results: Vec<Token> = Vec::new();
 
     for update in price_updates {
-        let positions = Position::update_position_price_by_token(update, &state).await?;
-        results.extend(positions)
+        let token = Token::update_token_price(update, &state).await?;
+        results.push(token)
     }
 
     Ok(Json(results))

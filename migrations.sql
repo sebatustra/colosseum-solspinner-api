@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS tokens (
     mint_pubkey VARCHAR(255) PRIMARY KEY,
     symbol VARCHAR(50) NOT NULL,
     name VARCHAR(255) NOT NULL,
+    price DOUBLE PRECISION NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -18,9 +20,7 @@ CREATE TABLE IF NOT EXISTS positions (
     mint_pubkey VARCHAR(255) NOT NULL,
     quantity DOUBLE PRECISION NOT NULL,
     purchase_price DOUBLE PRECISION NOT NULL,
-    current_price DOUBLE PRECISION NOT NULL,
-    purchase_date TIMESTAMPTZ NOT NULL,
-    last_updated TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_pubkey) REFERENCES users(user_pubkey),
     FOREIGN KEY (mint_pubkey) REFERENCES tokens(mint_pubkey)

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::Utc;
-use crate::{clients::client_jupiter::PriceUpdate, errors::{ApiError, Result}, AppState};
+use crate::{errors::{ApiError, Result}, AppState};
 
 #[derive(sqlx::FromRow, Debug, Serialize)]
 pub struct Position {
@@ -10,9 +10,7 @@ pub struct Position {
     pub mint_pubkey: String,
     pub quantity: f64,
     pub purchase_price: f64,
-    pub current_price: f64,
-    pub purchase_date: chrono::DateTime<chrono::Utc>,
-    pub last_updated: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -38,18 +36,14 @@ impl Position {
     ) -> Result<Self> {
         println!("->> {:<12} - create_position", "CONTROLLER");
 
-        let now = Utc::now();
-
         let result = sqlx::query_as::<_, Position>(
-                "INSERT INTO positions (user_pubkey, mint_pubkey, quantity, purchase_price, current_price, purchase_date, last_updated) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *"
+                "INSERT INTO positions (user_pubkey, mint_pubkey, quantity, purchase_price, updated_at) VALUES ($1, $2, $3, $4, $5) RETURNING *"
             )
             .bind(position.user_pubkey)
             .bind(position.mint_pubkey)
             .bind(position.quantity)
             .bind(position.purchase_price)
-            .bind(position.purchase_price)
-            .bind(now)
-            .bind(now)
+            .bind(Utc::now())
             .fetch_one(&state.db)
             .await;
 
@@ -177,34 +171,6 @@ impl Position {
                 );
 
                 Err(ApiError::PositionGetFail)
-            }
-        }
-    }
-
-    pub async fn update_position_price_by_token(
-        price_update: PriceUpdate,
-        state: &AppState
-    ) -> Result<Vec<Position>>{
-        println!("->> {:<12} - update_position_price_by_token", "CONTROLLER");
-
-        let result = sqlx::query_as::<_, Position>(
-                "UPDATE positions SET current_price = $1, last_updated = $2 WHERE mint_pubkey = $3 RETURNING *"
-            )
-            .bind(price_update.new_price)
-            .bind(Utc::now())
-            .bind(&price_update.mint_pubkey)
-            .fetch_all(&state.db)
-            .await;
-
-        match result {
-            Ok(positions) => Ok(positions),
-            Err(e) => {
-                println!(
-                    "Error updating positions for mint: {}. Error: {}",
-                    price_update.mint_pubkey,
-                    e
-                );
-                Err(ApiError::PositionUpdateFail)
             }
         }
     }
