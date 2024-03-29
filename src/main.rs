@@ -1,23 +1,11 @@
-use axum::{routing::{get, post}, Router};
+use axum::Router;
 use sqlx::{PgPool, Executor};
 
-pub mod handlers;
-pub mod models;
-
-use handlers::{
-    user_handlers::{
-        fetch_all_users,
-        create_user
-    },
-    token_handlers::{
-        fetch_all_tokens,
-        create_token
-    },
-    position_handlers::{
-        fetch_all_positions,
-        create_position
-    }
-};
+mod web;
+mod models;
+mod errors;
+mod clients;
+mod coordinators;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -33,14 +21,18 @@ async fn main(
 
     let state = AppState { db };
 
-    let router = Router::new()
-        .route("/users", get(fetch_all_users))
-        .route("/users", post(create_user))
-        .route("/tokens", get(fetch_all_tokens))
-        .route("/tokens", post(create_token))
-        .route("/positions", get(fetch_all_positions))
-        .route("/positions", post(create_position))
-        .with_state(state);
+    let position_routes = web::routes_positions::routes(state.clone());
+    let user_routes = web::routes_users::routes(state.clone());
+    let token_routes = web::routes_tokens::routes(state.clone());
+    let coordinator_routes = coordinators::coordinator_price::routes(state.clone());
+
+    let api_router = Router::new()
+        .merge(position_routes)
+        .merge(user_routes)
+        .merge(token_routes)
+        .merge(coordinator_routes);
+
+    let router = Router::new().nest("/api", api_router);
 
     Ok(router.into())
 }
