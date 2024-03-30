@@ -7,7 +7,6 @@ pub enum ApiError {
     // token errors
     TokenCreateFail,
     TokenGetFail,
-    TokenUpdateFail,
 
     // user errors
     UserCreateFail,
@@ -34,7 +33,6 @@ impl IntoResponse for ApiError {
             // tokens
             ApiError::TokenCreateFail => "Error creating the token",
             ApiError::TokenGetFail => "Error fetching tokens",
-            ApiError::TokenUpdateFail => "Error updating the token",
 
             // users
             ApiError::UserCreateFail => "Error creating the user",

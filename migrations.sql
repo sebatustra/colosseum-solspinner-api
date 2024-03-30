@@ -9,8 +9,6 @@ CREATE TABLE IF NOT EXISTS tokens (
     mint_pubkey VARCHAR(255) PRIMARY KEY,
     symbol VARCHAR(50) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    price DOUBLE PRECISION NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -18,9 +16,10 @@ CREATE TABLE IF NOT EXISTS positions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_pubkey VARCHAR(255) NOT NULL,
     mint_pubkey VARCHAR(255) NOT NULL,
+    mint_symbol VARCHAR(255) NOT NULL,
+    vs_token_symbol VARCHAR(255) NOT NULL,
     quantity DOUBLE PRECISION NOT NULL,
     purchase_price DOUBLE PRECISION NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_pubkey) REFERENCES users(user_pubkey),
     FOREIGN KEY (mint_pubkey) REFERENCES tokens(mint_pubkey)
