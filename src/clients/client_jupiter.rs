@@ -29,8 +29,6 @@ impl JupiterClient {
                 crate::errors::ApiError::JupiterDeserializationFail
             })?;
 
-        println!("Request from Jupiter: {:?}", &request);
-
         let new_price = request.data.get(&position.mint_pubkey).unwrap().price;
 
         let (price_change, percentage_change) = calculate_price_change(
