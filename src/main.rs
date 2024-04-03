@@ -1,5 +1,5 @@
 use axum::{middleware, Extension, Router};
-use sqlx::{PgPool, Executor};
+use sqlx::PgPool;
 use shuttle_runtime::SecretStore;
 
 
