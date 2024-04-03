@@ -13,7 +13,7 @@ pub struct Token {
 pub struct TokenForCreate {
     pub mint_pubkey: String,
     pub symbol: String,
-    pub name: String
+    pub name: String,
 }
 
 // CRUD implementation for Token

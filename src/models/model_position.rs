@@ -1,25 +1,63 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::Utc;
-use crate::{clients::client_jupiter::PriceUpdate, errors::{ApiError, Result}, AppState};
+use crate::{errors::{ApiError, Result}, AppState};
 
 #[derive(sqlx::FromRow, Debug, Serialize)]
 pub struct Position {
     pub id: Uuid,
     pub user_pubkey: String,
     pub mint_pubkey: String,
+    pub mint_symbol: String,
+    pub vs_token_symbol: String,
     pub quantity: f64,
     pub purchase_price: f64,
-    pub current_price: f64,
-    pub purchase_date: chrono::DateTime<chrono::Utc>,
-    pub last_updated: chrono::DateTime<chrono::Utc>,
     pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PositionWithProfit {
+    pub id: Uuid,
+    pub user_pubkey: String,
+    pub mint_pubkey: String,
+    pub mint_symbol: String,
+    pub vs_token_symbol: String,
+    pub quantity: f64,
+    pub purchase_price: f64,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub current_price: f64,
+    pub percentage_change: f64,
+    pub price_change: f64
+}
+
+impl PositionWithProfit {
+    pub fn new(
+        position: Position, 
+        current_price: f64,
+        percentage_change: f64, 
+        price_change: f64
+    ) -> Self {
+        PositionWithProfit {
+            id: position.id,
+            user_pubkey: position.user_pubkey,
+            mint_pubkey: position.mint_pubkey,
+            mint_symbol: position.mint_symbol,
+            vs_token_symbol: position.vs_token_symbol,
+            quantity: position.quantity,
+            purchase_price: position.purchase_price,
+            created_at: position.created_at,
+            current_price,
+            percentage_change,
+            price_change
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
 pub struct PositionForCreate {
     pub user_pubkey: String,
     pub mint_pubkey: String,
+    pub mint_symbol: String,
+    pub vs_token_symbol: String,
     pub quantity: f64,
     pub purchase_price: f64,
 }
@@ -38,18 +76,15 @@ impl Position {
     ) -> Result<Self> {
         println!("->> {:<12} - create_position", "CONTROLLER");
 
-        let now = Utc::now();
-
         let result = sqlx::query_as::<_, Position>(
-                "INSERT INTO positions (user_pubkey, mint_pubkey, quantity, purchase_price, current_price, purchase_date, last_updated) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *"
+                "INSERT INTO positions (user_pubkey, mint_pubkey, mint_symbol, vs_token_symbol, quantity, purchase_price) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *"
             )
             .bind(position.user_pubkey)
             .bind(position.mint_pubkey)
+            .bind(position.mint_symbol)
+            .bind(position.vs_token_symbol)
             .bind(position.quantity)
             .bind(position.purchase_price)
-            .bind(position.purchase_price)
-            .bind(now)
-            .bind(now)
             .fetch_one(&state.db)
             .await;
 
@@ -80,11 +115,11 @@ impl Position {
         }
     }
 
-    pub async fn get_all_user_positions(
+    pub async fn get_user_positions(
         user_pubkey: String, 
         state: AppState
     ) -> Result<Vec<Position>> {
-        println!("->> {:<12} - get_all_user_positions", "CONTROLLER");
+        println!("->> {:<12} - get_user_positions", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Position>(
                 "SELECT * FROM positions WHERE user_pubkey = $1"
@@ -102,12 +137,12 @@ impl Position {
         }
     }
 
-    pub async fn get_all_user_positions_by_token(
+    pub async fn get_user_positions_by_token(
         user_pubkey: String,
         mint_pubkey: String,
         state: AppState
     ) -> Result<Vec<Position>> {
-        println!("->> {:<12} - get_all_user_positions_by_token", "CONTROLLER");
+        println!("->> {:<12} - get_user_positions_by_token", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Position>(
                 "SELECT * FROM positions WHERE user_pubkey = $1 AND mint_pubkey = $2"
@@ -131,11 +166,11 @@ impl Position {
         }
     }
 
-    pub async fn get_all_token_positions(
+    pub async fn get_token_positions(
         mint_pubkey: String,
         state: AppState
     ) -> Result<Vec<Position>> {
-        println!("->> {:<12} - get_all_token_positions", "CONTROLLER");
+        println!("->> {:<12} - get_token_positions", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Position>(
                 "SELECT * FROM positions WHERE mint_pubkey = $1"
@@ -153,58 +188,6 @@ impl Position {
                     e
                 );
                 Err(ApiError::PositionGetFail)
-            }
-        }
-    }
-
-    pub async fn get_all_mints_in_positions(
-        state: &AppState
-    ) -> Result<Vec<String>> {
-        println!("->> {:<12} - get_all_mints_in_positions", "CONTROLLER");
-
-        let result = sqlx::query_as::<_, PositionMint>(
-                "SELECT DISTINCT mint_pubkey FROM positions"
-            )
-            .fetch_all(&state.db)
-            .await;
-
-        match result {
-            Ok(mints) => Ok(mints.into_iter().map(|mint| mint.mint_pubkey).collect()),
-            Err(e) => {
-                println!(
-                    "Error fetching distinct mints. Error: {}",
-                    e
-                );
-
-                Err(ApiError::PositionGetFail)
-            }
-        }
-    }
-
-    pub async fn update_position_price_by_token(
-        price_update: PriceUpdate,
-        state: &AppState
-    ) -> Result<Vec<Position>>{
-        println!("->> {:<12} - update_position_price_by_token", "CONTROLLER");
-
-        let result = sqlx::query_as::<_, Position>(
-                "UPDATE positions SET current_price = $1, last_updated = $2 WHERE mint_pubkey = $3 RETURNING *"
-            )
-            .bind(price_update.new_price)
-            .bind(Utc::now())
-            .bind(&price_update.mint_pubkey)
-            .fetch_all(&state.db)
-            .await;
-
-        match result {
-            Ok(positions) => Ok(positions),
-            Err(e) => {
-                println!(
-                    "Error updating positions for mint: {}. Error: {}",
-                    price_update.mint_pubkey,
-                    e
-                );
-                Err(ApiError::PositionUpdateFail)
             }
         }
     }
