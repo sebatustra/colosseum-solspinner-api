@@ -1,3 +1,4 @@
+-- Add migration script here
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS users (
@@ -25,3 +26,10 @@ CREATE TABLE IF NOT EXISTS positions (
     FOREIGN KEY (mint_pubkey) REFERENCES tokens(mint_pubkey)
 );
 
+CREATE TABLE IF NOT EXISTS tgbotusers (
+    user_id BIGINT PRIMARY KEY,
+    access_code TEXT,
+    points INTEGER DEFAULT 3,
+    referrals INTEGER DEFAULT 0,
+    referred_by BIGINT
+);

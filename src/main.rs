@@ -20,7 +20,9 @@ async fn main(
     #[shuttle_runtime::Secrets] secrets: SecretStore,
 ) -> shuttle_axum::ShuttleAxum {
 
-    db.execute(include_str!("../migrations.sql")).await.unwrap();
+    // db.execute(include_str!("../migrations.sql")).await.unwrap();
+
+    let _ = sqlx::migrate!().run(&db).await.map_err(|e| format!("Migrations failed. Error: {e}"));
 
     let api_key = secrets.get("API_KEY").expect("API key not found in secrets!");
 
