@@ -6,6 +6,7 @@ pub struct Token {
     pub mint_pubkey: String,
     pub symbol: String,
     pub name: String,
+    pub logo_url: String,
     pub created_at: chrono::DateTime<chrono::Utc>
 }
 
@@ -14,6 +15,7 @@ pub struct TokenForCreate {
     pub mint_pubkey: String,
     pub symbol: String,
     pub name: String,
+    pub logo_url: String,
 }
 
 // CRUD implementation for Token
@@ -26,11 +28,12 @@ impl Token {
         println!("->> {:<12} - create_token", "CONTROLLER");
         
         let result = sqlx::query_as::<_, Token>(
-                "INSERT INTO tokens (mint_pubkey, symbol, name) VALUES ($1, $2, $3) RETURNING *"
+                "INSERT INTO tokens (mint_pubkey, symbol, name, logo_url) VALUES ($1, $2, $3, $4) RETURNING *"
             )
             .bind(token.mint_pubkey)
             .bind(token.symbol)
             .bind(token.name)
+            .bind(token.logo_url)
             .fetch_one(&state.db)
             .await;
 

@@ -7,6 +7,7 @@ mod web;
 mod models;
 mod errors;
 mod clients;
+mod utils;
 
 #[derive(Clone)]
 pub struct AppState {
