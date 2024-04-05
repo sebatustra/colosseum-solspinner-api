@@ -1,21 +1,22 @@
 use std::collections::HashMap;
 use serde::Deserialize;
-use crate::{errors::Result, models::model_position::{Position, PositionWithProfit}};
+use crate::errors::Result;
 
 pub struct JupiterClient;
 
 impl JupiterClient {
-    pub async fn get_position_profit(
-        position: Position
-    ) -> Result<PositionWithProfit> {
-        println!("->> {:<12} - get_position_profit", "CLIENT");
+    pub async fn get_token_price(
+        token_pubkey: &str,
+        vs_token_symbol: &str
+    ) -> Result<f64> {
+        println!("->> {:<12} - get_token_price", "CLIENT");
 
         let query_url = format!(
             "https://price.jup.ag/v4/price?ids={}&vsToken={}",
-            position.mint_pubkey,
-            position.vs_token_symbol
+            token_pubkey,
+            vs_token_symbol
         );
-        
+
         let request = reqwest::get(query_url)
             .await
             .map_err(|e| {
@@ -29,31 +30,11 @@ impl JupiterClient {
                 crate::errors::ApiError::JupiterDeserializationFail
             })?;
 
-        let new_price = request.data.get(&position.mint_pubkey).unwrap().price;
+        
+        let new_price = request.data.get(token_pubkey).unwrap().price;
 
-        let (price_change, percentage_change) = calculate_price_change(
-            new_price, 
-            position.purchase_price
-        );
-
-        Ok(PositionWithProfit::new(
-            position,
-            new_price,
-            percentage_change, 
-            price_change
-        ))
+        Ok(new_price)
     }
-}
-
-fn calculate_price_change(new_price: f64, old_price: f64) -> (f64, f64) {
-    let change_in_price = new_price - old_price;
-    let percentage_change = if old_price != 0.0 {
-        (change_in_price / old_price) * 100.0
-    } else {
-        0.0 
-    };
-
-    (change_in_price, percentage_change)
 }
 
 #[derive(Deserialize, Debug)]

@@ -2,13 +2,16 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use crate::{errors::{ApiError, Result}, AppState};
 
-#[derive(sqlx::FromRow, Debug, Serialize)]
+#[derive(sqlx::FromRow, Debug, Serialize, Clone)]
 pub struct Position {
     pub id: Uuid,
     pub user_pubkey: String,
-    pub mint_pubkey: String,
-    pub mint_symbol: String,
+    pub token_pubkey: String,
+    pub token_symbol: String,
+    pub token_logo_url: String,
+    pub vs_token_pubkey: String,
     pub vs_token_symbol: String,
+    pub vs_token_logo_url: String,
     pub quantity: f64,
     pub purchase_price: f64,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -18,9 +21,12 @@ pub struct Position {
 pub struct PositionWithProfit {
     pub id: Uuid,
     pub user_pubkey: String,
-    pub mint_pubkey: String,
-    pub mint_symbol: String,
+    pub token_pubkey: String,
+    pub token_symbol: String,
+    pub token_logo_url: String,
+    pub vs_token_pubkey: String,
     pub vs_token_symbol: String,
+    pub vs_token_logo_url: String,
     pub quantity: f64,
     pub purchase_price: f64,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -39,9 +45,12 @@ impl PositionWithProfit {
         PositionWithProfit {
             id: position.id,
             user_pubkey: position.user_pubkey,
-            mint_pubkey: position.mint_pubkey,
-            mint_symbol: position.mint_symbol,
+            token_pubkey: position.token_pubkey,
+            token_symbol: position.token_symbol,
+            token_logo_url: position.token_logo_url,
+            vs_token_pubkey: position.vs_token_pubkey,
             vs_token_symbol: position.vs_token_symbol,
+            vs_token_logo_url: position.vs_token_logo_url,
             quantity: position.quantity,
             purchase_price: position.purchase_price,
             created_at: position.created_at,
@@ -55,9 +64,12 @@ impl PositionWithProfit {
 #[derive(Deserialize, Debug)]
 pub struct PositionForCreate {
     pub user_pubkey: String,
-    pub mint_pubkey: String,
-    pub mint_symbol: String,
+    pub token_pubkey: String,
+    pub token_symbol: String,
+    pub token_logo_url: String,
+    pub vs_token_pubkey: String,
     pub vs_token_symbol: String,
+    pub vs_token_logo_url: String,
     pub quantity: f64,
     pub purchase_price: f64,
 }
@@ -65,6 +77,12 @@ pub struct PositionForCreate {
 #[derive(sqlx::FromRow, Serialize, Debug)]
 pub struct PositionMint {
     pub mint_pubkey: String
+}
+
+#[derive(Deserialize, Debug, sqlx::FromRow)]
+pub struct UniquePositionsData {
+    pub token_pubkey: String,
+    pub vs_token_symbol: String
 }
 
 // CRUD implementation for Position
@@ -77,12 +95,15 @@ impl Position {
         println!("->> {:<12} - create_position", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Position>(
-                "INSERT INTO positions (user_pubkey, mint_pubkey, mint_symbol, vs_token_symbol, quantity, purchase_price) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *"
+                "INSERT INTO positions (user_pubkey, token_pubkey, token_symbol, token_logo_url, vs_token_pubkey, vs_token_symbol, vs_token_logo_url, quantity, purchase_price) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;"
             )
             .bind(position.user_pubkey)
-            .bind(position.mint_pubkey)
-            .bind(position.mint_symbol)
+            .bind(position.token_pubkey)
+            .bind(position.token_symbol)
+            .bind(position.token_logo_url)
+            .bind(position.vs_token_pubkey)
             .bind(position.vs_token_symbol)
+            .bind(position.vs_token_logo_url)
             .bind(position.quantity)
             .bind(position.purchase_price)
             .fetch_one(&state.db)
@@ -101,7 +122,7 @@ impl Position {
         println!("->> {:<12} - get_positions", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Position>(
-                "SELECT * FROM positions"
+                "SELECT * FROM positions;"
             )
             .fetch_all(&state.db)
             .await;
@@ -116,13 +137,13 @@ impl Position {
     }
 
     pub async fn get_user_positions(
-        user_pubkey: String, 
+        user_pubkey: &str, 
         state: AppState
     ) -> Result<Vec<Position>> {
         println!("->> {:<12} - get_user_positions", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Position>(
-                "SELECT * FROM positions WHERE user_pubkey = $1"
+                "SELECT * FROM positions WHERE user_pubkey = $1;"
             )
             .bind(&user_pubkey)
             .fetch_all(&state.db)
@@ -139,16 +160,16 @@ impl Position {
 
     pub async fn get_user_positions_by_token(
         user_pubkey: String,
-        mint_pubkey: String,
+        token_pubkey: String,
         state: AppState
     ) -> Result<Vec<Position>> {
         println!("->> {:<12} - get_user_positions_by_token", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Position>(
-                "SELECT * FROM positions WHERE user_pubkey = $1 AND mint_pubkey = $2"
+                "SELECT * FROM positions WHERE user_pubkey = $1 AND token_pubkey = $2;"
             )
             .bind(&user_pubkey)
-            .bind(&mint_pubkey)
+            .bind(&token_pubkey)
             .fetch_all(&state.db)
             .await;
 
@@ -158,7 +179,7 @@ impl Position {
                 println!(
                     "Error fetching positions for user: {}, mint: {}. Error: {}",
                     user_pubkey,
-                    mint_pubkey,
+                    token_pubkey,
                     e
                 );
                 Err(ApiError::PositionGetFail)
@@ -167,15 +188,15 @@ impl Position {
     }
 
     pub async fn get_token_positions(
-        mint_pubkey: String,
+        token_pubkey: String,
         state: AppState
     ) -> Result<Vec<Position>> {
         println!("->> {:<12} - get_token_positions", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Position>(
-                "SELECT * FROM positions WHERE mint_pubkey = $1"
+                "SELECT * FROM positions WHERE token_pubkey = $1;"
             )
-            .bind(&mint_pubkey)
+            .bind(&token_pubkey)
             .fetch_all(&state.db)
             .await;
 
@@ -184,7 +205,33 @@ impl Position {
             Err(e) => {
                 println!(
                     "Error fetching positions for mint: {}. Error: {}",
-                    mint_pubkey,
+                    token_pubkey,
+                    e
+                );
+                Err(ApiError::PositionGetFail)
+            }
+        }
+    }
+
+    pub async fn get_user_unique_tokens_and_vs_tokens(
+        user_pubkey: &str,
+        state: AppState
+    ) -> Result<Vec<UniquePositionsData>> {
+        println!("->> {:<12} - get_unique_positions_pubkey_and_vs_token", "CONTROLLER");
+
+        let result = sqlx::query_as::<_, UniquePositionsData>(
+                "SELECT DISTINCT ON (token_pubkey, vs_token_symbol) token_pubkey, vs_token_symbol FROM positions WHERE user_pubkey = $1 ORDER BY token_pubkey, vs_token_symbol, created_at;"
+            )
+            .bind(user_pubkey)
+            .fetch_all(&state.db)
+            .await;
+
+        match result {
+            Ok(unique_positions) => Ok(unique_positions),
+            Err(e) => {
+                println!(
+                    "Error fetching unique positions for user: {}. Error: {}",
+                    user_pubkey,
                     e
                 );
                 Err(ApiError::PositionGetFail)
