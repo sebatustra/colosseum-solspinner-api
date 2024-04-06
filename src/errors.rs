@@ -19,6 +19,8 @@ pub enum ApiError {
     // client errors
     JupiterFetchFail,
     JupiterDeserializationFail,
+    BirdeyeFetchFail,
+    BirdeyeDeserializationFail
 }
 
 impl IntoResponse for ApiError {
@@ -39,8 +41,12 @@ impl IntoResponse for ApiError {
             ApiError::UserGetFail => "Error fetching users",
 
             // jupiter
-            ApiError::JupiterFetchFail => "Error fetching jupiter price data",
-            ApiError::JupiterDeserializationFail => "Error deserializing jupiter price data"
+            ApiError::JupiterFetchFail => "Error fetching Jupiter price data",
+            ApiError::JupiterDeserializationFail => "Error deserializing Jupiter price data",
+
+            // birdeye
+            ApiError::BirdeyeFetchFail => "Error fetching data from Birdeye",
+            ApiError::BirdeyeDeserializationFail => "Error deserializing Birdeye data"
         };
 
         (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()

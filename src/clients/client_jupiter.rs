@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-use serde::Deserialize;
-use crate::errors::Result;
 
+use crate::errors::{Result, ApiError};
+use super::clients_structs::JupiterResponse;
 pub struct JupiterClient;
 
 impl JupiterClient {
@@ -17,32 +16,22 @@ impl JupiterClient {
             vs_token_symbol
         );
 
-        let request = reqwest::get(query_url)
+        let response = reqwest::get(query_url)
             .await
             .map_err(|e| {
                 println!("Jupiter client failed fetching data. Error: {}", e);
-                crate::errors::ApiError::JupiterFetchFail
+                ApiError::JupiterFetchFail
             })?
             .json::<JupiterResponse>()
             .await
             .map_err(|e| {
-                println!("Jupiter client failed serializing data. Error: {}", e);
-                crate::errors::ApiError::JupiterDeserializationFail
+                println!("Jupiter client failed deserializing data. Error: {}", e);
+                ApiError::JupiterDeserializationFail
             })?;
 
         
-        let new_price = request.data.get(token_pubkey).unwrap().price;
+        let new_price = response.data.get(token_pubkey).unwrap().price;
 
         Ok(new_price)
     }
-}
-
-#[derive(Deserialize, Debug)]
-struct JupiterResponse {
-    data: HashMap<String, TokenData>,
-}
-
-#[derive(Deserialize, Debug)]
-struct TokenData {
-    price: f64
 }
