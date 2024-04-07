@@ -1,21 +1,10 @@
-use axum::{extract::State, routing::post, Json, Router};
-use crate::{models::model_token::{Token, TokenForCreate}, AppState, errors::Result};
+use axum::{extract::State, routing::get, Json, Router};
+use crate::{models::model_token::Token, AppState, errors::Result};
 
 pub fn routes(state: AppState) -> Router {
     Router::new()
-        .route("/tokens", post(create_token).get(get_tokens))
+        .route("/tokens", get(get_tokens))
         .with_state(state)
-}
-
-async fn create_token(
-    State(state): State<AppState>,
-    Json(token): Json<TokenForCreate>
-) -> Result<Json<Token>> {
-    println!("->> {:<12} - create_token", "HANDLER");
-
-    let token = Token::create_token(token, state).await?;
-
-    Ok(Json(token))
 }
 
 async fn get_tokens(
