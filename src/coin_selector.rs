@@ -1,11 +1,14 @@
 use std::collections::HashSet;
+use anyhow::{Result, anyhow};
 
-use crate::{clients::{client_birdeye::BirdeyeClient, clients_structs::TokenFromClient}, AppState};
+use crate::{
+    clients::{client_birdeye::BirdeyeClient, clients_structs::TokenFromClient}, errors::ApiError, models::{model_selected_token::SelectedToken, model_token::{Token, TokenForCreate}}, AppState
+};
 
 pub struct CoinSelector;
 
 impl CoinSelector {
-    pub async fn run_coin_selection(state: AppState) {
+    pub async fn run_coin_selection(state: AppState) -> Result<()> {
         println!("->> {:<12} - run_coin_selection", "SELECTOR");
 
         let excluded_addresses: HashSet<&str> = [
@@ -39,8 +42,19 @@ impl CoinSelector {
 
         let birdeye_client = BirdeyeClient::new(&state.birdeye_api_key);
     
-        let list_response_1 = birdeye_client.get_tokens_list(1).await.unwrap();
-        let list_response_2 = birdeye_client.get_tokens_list(2).await.unwrap();
+        let list_response_1 = match birdeye_client.get_tokens_list(1).await {
+            Ok(response) => response,
+            Err(_) => {
+                return Err(anyhow!("list_response_1 failed!"));
+            }
+        };
+
+        let list_response_2 = match birdeye_client.get_tokens_list(2).await {
+            Ok(response) => response,
+            Err(_) => {
+                return Err(anyhow!("list_response_2 failed!"));
+            }
+        };
 
         let list_tokens: Vec<TokenFromClient> = list_response_1.data.tokens
             .iter()
@@ -57,7 +71,9 @@ impl CoinSelector {
             })
             .collect();
 
-        println!("number of partially_filtered_tokens: {}", partially_filtered_tokens.len());
+        if partially_filtered_tokens.len() < 25 {
+            return Err(anyhow!("partially_filtered_tokens less than 25!"));
+        }
 
         let mut fully_filtered_tokens: Vec<TokenFromClient> = Vec::new();
     
@@ -80,16 +96,49 @@ impl CoinSelector {
              }
         }
 
-        println!("number of fully_filtered_tokens: {}", fully_filtered_tokens.len());
+        if fully_filtered_tokens.len() >= 25 {
+            match SelectedToken::update_actives_to_inactive(state.clone()).await {
+                Ok(_) => (),
+                Err(_) => return Err(anyhow!("update_actives_to_inactive failed!"))
+            }
 
-        println!("{:#?}", fully_filtered_tokens)
+            let tokens_to_process: Vec<TokenFromClient> = fully_filtered_tokens.drain(0..25).collect();
 
-        // create the tokens table
+            for token in tokens_to_process {
 
-        // delete current_tokens table data
+                let regular_token = TokenForCreate {
+                    mint_pubkey: token.address.clone(),
+                    symbol: token.symbol.clone(),
+                    name: token.name.clone(),
+                    logo_url: token.logo_uri.clone()
+                };
 
-        // update current_tokens_table
+                match Token::create_token(regular_token, state.clone()).await {
+                    Ok(_) => {
+                        match SelectedToken::create_selected_token(token, state.clone()).await {
+                            Ok(_) => (),
+                            Err(_) => return Err(anyhow!("create_selected_token failed!"))
+                        }
+                    },
+                    Err(e) => {
+                        if let ApiError::TokenAlreadyExists = e {
+                            println!("Token already exists, handling accordingly...");
+                            match SelectedToken::create_selected_token(token, state.clone()).await {
+                                Ok(_) => (),
+                                Err(_) => return Err(anyhow!("create_selected_token failed!"))
+                            }
+                        } else {
 
+                            return Err(anyhow!("Token creation failed"));
+                        }
+                    }
+                }
+            }
+
+            Ok(())
+        } else {
+            Err(anyhow!("less than 25 tokens"))
+        }
     }
 }
 

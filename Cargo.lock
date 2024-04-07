@@ -2269,8 +2269,10 @@ dependencies = [
 name = "solspinner"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "axum 0.7.4",
  "chrono",
+ "rand",
  "reqwest",
  "serde",
  "shuttle-axum",

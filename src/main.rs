@@ -36,11 +36,13 @@ async fn main(
     let position_routes = web::routes_positions::routes(state.clone());
     let user_routes = web::routes_users::routes(state.clone());
     let token_routes = web::routes_tokens::routes(state.clone());
+    let play_routes = web::routes_play::routes(state.clone());
 
     let api_router = Router::new()
         .merge(position_routes)
         .merge(user_routes)
         .merge(token_routes)
+        .merge(play_routes)
         .layer(middleware::from_fn(web::mw_auth::auth_middleware))
         .layer(Extension(state.clone()));
     
@@ -49,11 +51,28 @@ async fn main(
     let scheduler = JobScheduler::new().await.expect("Failed to create job scheduler");
 
     scheduler.add(
-        Job::new_async("1 * * * * *", move |_, _| {
+        Job::new_async("0 0 */4 * * *", move |_, _| {
             let state_copy = state.clone();
             Box::pin(async move {
-                CoinSelector::run_coin_selection(state_copy.clone()).await;
-                println!("i run async every 10 seconds");
+                let mut attempts = 0;
+
+                while attempts < 3 {
+                    match CoinSelector::run_coin_selection(state_copy.clone()).await {
+                        Ok(_) => {
+                            println!("->> {:<12} - run_coin_selection succeeded", "MAIN");
+                            break;
+                        },
+                        Err(e) => {
+                            println!("->> {:<12} - run_coin_selection failed. Error: {e}", "MAIN");
+                            attempts += 1;
+
+                            if attempts >= 3 {
+                                println!("->> {:<12} - run_coin_selection failed 3 times", "MAIN");
+                                break;
+                            }
+                        }
+                    }
+                }
             })
         }).expect("Failed to add job")
     ).await.expect("Failed to schedule job");

@@ -6,6 +6,7 @@ pub type Result<T> = core::result::Result<T, ApiError>;
 pub enum ApiError {
     // token errors
     TokenCreateFail,
+    TokenAlreadyExists,
     TokenGetFail,
 
     // user errors
@@ -20,7 +21,12 @@ pub enum ApiError {
     JupiterFetchFail,
     JupiterDeserializationFail,
     BirdeyeFetchFail,
-    BirdeyeDeserializationFail
+    BirdeyeDeserializationFail,
+
+    // selected token errors
+    SelectedTokenCreateFail,
+    SelectedTokenGetFail,
+    SelectedTokenUpdateFail,
 }
 
 impl IntoResponse for ApiError {
@@ -35,6 +41,7 @@ impl IntoResponse for ApiError {
             // tokens
             ApiError::TokenCreateFail => "Error creating the token",
             ApiError::TokenGetFail => "Error fetching tokens",
+            ApiError::TokenAlreadyExists => "token already exists",
 
             // users
             ApiError::UserCreateFail => "Error creating the user",
@@ -46,7 +53,13 @@ impl IntoResponse for ApiError {
 
             // birdeye
             ApiError::BirdeyeFetchFail => "Error fetching data from Birdeye",
-            ApiError::BirdeyeDeserializationFail => "Error deserializing Birdeye data"
+            ApiError::BirdeyeDeserializationFail => "Error deserializing Birdeye data",
+
+            // selected token
+            ApiError::SelectedTokenCreateFail => "Error creating the selected token",
+            ApiError::SelectedTokenGetFail => "Error fetching the selected token",
+            ApiError::SelectedTokenUpdateFail => "Error updating selected coins",
+
         };
 
         (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()

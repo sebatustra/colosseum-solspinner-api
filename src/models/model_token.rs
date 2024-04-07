@@ -26,6 +26,19 @@ impl Token {
         state: AppState
     ) -> Result<Self> {
         println!("->> {:<12} - create_token", "CONTROLLER");
+
+        let token_exists = sqlx::query(
+                "SELECT 1 FROM tokens WHERE mint_pubkey = $1"
+            )
+                .bind(&token.mint_pubkey)
+                .fetch_optional(&state.db)
+                .await
+                .unwrap();
+
+        if token_exists.is_some() {
+            println!("Token with mint_pubkey {} already exists.", &token.mint_pubkey);
+            return Err(ApiError::TokenAlreadyExists)
+        }
         
         let result = sqlx::query_as::<_, Token>(
                 "INSERT INTO tokens (mint_pubkey, symbol, name, logo_url) VALUES ($1, $2, $3, $4) RETURNING *"
