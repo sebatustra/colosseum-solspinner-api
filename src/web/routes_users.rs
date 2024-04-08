@@ -1,9 +1,10 @@
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{extract::{Path, State}, routing::{get, post}, Json, Router};
 use crate::{errors::Result, models::model_user::{User, UserForCreate}, AppState};
 
 pub fn routes(state: AppState) -> Router {
     Router::new()
         .route("/users", post(create_user).get(get_users))
+        .route("/users/:pubkey", get(get_user))
         .with_state(state)
 }
 
@@ -26,4 +27,15 @@ async fn get_users(
     let users = User::get_users(state).await?;
 
     Ok(Json(users))
+}
+
+async fn get_user(
+    State(state): State<AppState>,
+    Path(pubkey): Path<String>
+) -> Result<Json<Option<User>>> {
+    println!("->> {:<12} - get_user", "HANDLER");
+
+    let user = User::get_user(pubkey, state).await?;
+
+    Ok(Json(user))
 }

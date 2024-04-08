@@ -74,15 +74,16 @@ pub struct PositionForCreate {
     pub purchase_price: f64,
 }
 
-#[derive(sqlx::FromRow, Serialize, Debug)]
-pub struct PositionMint {
-    pub mint_pubkey: String
-}
-
 #[derive(Deserialize, Debug, sqlx::FromRow)]
 pub struct UniquePositionsData {
     pub token_pubkey: String,
     pub vs_token_symbol: String
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UpdatePositionData {
+    pub position_id: Uuid,
+    pub new_quantity: f64
 }
 
 // CRUD implementation for Position
@@ -114,6 +115,29 @@ impl Position {
             Err(e) => {
                 println!("Error creating position. Error: {}", e);
                 Err(ApiError::PositionCreateFail)
+            }
+        }
+    }
+
+    pub async fn update_position_quantity(
+        update_data: UpdatePositionData,
+        state: AppState
+    ) -> Result<Position> {
+        println!("->> {:<12} - update_position", "CONTROLLER");
+
+        let result = sqlx::query_as::<_, Position>(
+                "UPDATE positions SET quantity = $1 WHERE id = $2 RETURNING *"
+            )
+            .bind(update_data.new_quantity)
+            .bind(&update_data.position_id)
+            .fetch_one(&state.db)
+            .await;
+
+        match result {
+            Ok(position) => Ok(position),
+            Err(e) => {
+                println!("Error updating position with id: {}. Error: {}",update_data.position_id, e);
+                Err(ApiError::PositionGetFail)
             }
         }
     }

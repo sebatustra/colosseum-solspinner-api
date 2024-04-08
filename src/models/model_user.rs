@@ -54,4 +54,26 @@ impl User {
             }
         }
     }
+
+    pub async fn get_user(
+        pubkey: String, 
+        state: AppState
+    ) -> Result<Option<User>> {
+        println!("->> {:<12} - get_user", "CONTROLLER");
+
+        let result = sqlx::query_as::<_, User>(
+            "SELECT * FROM users WHERE user_pubkey = $1"
+        )
+        .bind(&pubkey)
+        .fetch_optional(&state.db)
+        .await;
+
+        match result {
+            Ok(user) => Ok(user),
+            Err(e) => {
+                println!("Error fetching user with pubkey {}. Error: {}", pubkey, e);
+                Err(ApiError::UserGetFail)
+            }
+        }
+    }
 }
