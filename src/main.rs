@@ -2,6 +2,7 @@ use axum::{middleware, Extension, Router};
 use sqlx::PgPool;
 use shuttle_runtime::SecretStore;
 use tokio_cron_scheduler::{Job, JobScheduler};
+use tower_http::cors::CorsLayer;
 
 use crate::coin_selector::CoinSelector;
 
@@ -46,7 +47,9 @@ async fn main(
         .layer(middleware::from_fn(web::mw_auth::auth_middleware))
         .layer(Extension(state.clone()));
     
-    let router = Router::new().nest("/api", api_router);
+    let router = Router::new()
+        .nest("/api", api_router)
+        .layer(CorsLayer::permissive());
 
     let scheduler = JobScheduler::new().await.expect("Failed to create job scheduler");
 
