@@ -54,7 +54,7 @@ async fn main(
     let scheduler = JobScheduler::new().await.expect("Failed to create job scheduler");
 
     scheduler.add(
-        Job::new_async("0 0 */4 * * *", move |_, _| {
+        Job::new_async("0 0 0 * * *", move |_, _| {
             let state_copy = state.clone();
             Box::pin(async move {
                 let mut attempts = 0;
