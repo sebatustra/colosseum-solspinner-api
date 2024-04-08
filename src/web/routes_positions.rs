@@ -1,9 +1,9 @@
 use axum::{extract::{Path, State}, routing::{get, post}, Json, Router};
-use crate::{clients::client_jupiter::JupiterClient, errors::Result, models::model_position::{Position, PositionForCreate, PositionWithProfit}, utils, AppState};
+use crate::{clients::client_jupiter::JupiterClient, errors::Result, models::model_position::{Position, PositionForCreate, PositionWithProfit, UpdatePositionData}, utils, AppState};
 
 pub fn routes(state: AppState) -> Router {
     Router::new()
-        .route("/positions", post(create_position).get(get_positions))
+        .route("/positions", post(create_position).get(get_positions).put(update_position_quantity))
         .route("/positions/user/:user_pubkey", get(get_user_positions))
         .route("/positions/user/:user_pubkey/mint/:mint_pubkey", get(get_user_positions_by_token))
         .route("/positions-profit/user/:user_pubkey", get(get_user_positions_and_profit))
@@ -18,6 +18,17 @@ async fn create_position(
     println!("->> {:<12} - create_position", "HANDLER");
 
     let position = Position::create_position(position, state).await?;
+
+    Ok(Json(position))
+}
+
+async fn update_position_quantity(
+    State(state): State<AppState>,
+    Json(update_data): Json<UpdatePositionData>
+) -> Result<Json<Position>> {
+    println!("->> {:<12} - update_position_quantity", "HANDLER");
+
+    let position = Position::update_position_quantity(update_data, state).await?;
 
     Ok(Json(position))
 }
