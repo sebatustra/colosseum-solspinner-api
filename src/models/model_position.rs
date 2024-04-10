@@ -99,7 +99,7 @@ impl Position {
         println!("->> {:<12} - create_position", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Position>(
-                "INSERT INTO positions (user_pubkey, token_pubkey, token_symbol, token_logo_url, vs_token_pubkey, vs_token_symbol, vs_token_logo_url, initial_quantity, current_quantity, purchase_price) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;"
+                "INSERT INTO positions (user_pubkey, token_pubkey, token_symbol, token_logo_url, vs_token_pubkey, vs_token_symbol, vs_token_logo_url, initial_quantity, current_quantity, purchase_price) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *;"
             )
             .bind(position.user_pubkey)
             .bind(position.token_pubkey)
