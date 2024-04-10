@@ -12,7 +12,8 @@ pub struct Position {
     pub vs_token_pubkey: String,
     pub vs_token_symbol: String,
     pub vs_token_logo_url: String,
-    pub quantity: f64,
+    pub initial_quantity: f64,
+    pub current_quantity: f64,
     pub purchase_price: f64,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
@@ -27,7 +28,8 @@ pub struct PositionWithProfit {
     pub vs_token_pubkey: String,
     pub vs_token_symbol: String,
     pub vs_token_logo_url: String,
-    pub quantity: f64,
+    pub initial_quantity: f64,
+    pub current_quantity: f64,
     pub purchase_price: f64,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub current_price: f64,
@@ -51,7 +53,8 @@ impl PositionWithProfit {
             vs_token_pubkey: position.vs_token_pubkey,
             vs_token_symbol: position.vs_token_symbol,
             vs_token_logo_url: position.vs_token_logo_url,
-            quantity: position.quantity,
+            initial_quantity: position.initial_quantity,
+            current_quantity: position.current_quantity,
             purchase_price: position.purchase_price,
             created_at: position.created_at,
             current_price,
@@ -96,7 +99,7 @@ impl Position {
         println!("->> {:<12} - create_position", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Position>(
-                "INSERT INTO positions (user_pubkey, token_pubkey, token_symbol, token_logo_url, vs_token_pubkey, vs_token_symbol, vs_token_logo_url, quantity, purchase_price) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;"
+                "INSERT INTO positions (user_pubkey, token_pubkey, token_symbol, token_logo_url, vs_token_pubkey, vs_token_symbol, vs_token_logo_url, initial_quantity, current_quantity, purchase_price) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;"
             )
             .bind(position.user_pubkey)
             .bind(position.token_pubkey)
@@ -105,6 +108,7 @@ impl Position {
             .bind(position.vs_token_pubkey)
             .bind(position.vs_token_symbol)
             .bind(position.vs_token_logo_url)
+            .bind(position.quantity)
             .bind(position.quantity)
             .bind(position.purchase_price)
             .fetch_one(&state.db)
@@ -126,7 +130,7 @@ impl Position {
         println!("->> {:<12} - update_position", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Position>(
-                "UPDATE positions SET quantity = $1 WHERE id = $2 RETURNING *"
+                "UPDATE positions SET current_quantity = $1 WHERE id = $2 RETURNING *"
             )
             .bind(update_data.new_quantity)
             .bind(&update_data.position_id)
