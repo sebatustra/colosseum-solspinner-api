@@ -1,5 +1,5 @@
 use axum::{extract::{Path, State}, routing::{get, post}, Json, Router};
-use crate::{clients::client_jupiter::JupiterClient, errors::Result, models::model_position::{Position, PositionForCreate, PositionWithProfit, UpdatePositionData}, utils, AppState};
+use crate::{clients::client_jupiter::JupiterClient, errors::api_errors::Result, models::model_position::{Position, PositionForCreate, PositionWithProfit, UpdatePositionData}, utils, AppState};
 
 pub fn routes(state: AppState) -> Router {
     Router::new()

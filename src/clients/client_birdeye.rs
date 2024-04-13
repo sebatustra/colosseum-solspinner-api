@@ -1,6 +1,6 @@
 use axum::http::{HeaderMap, HeaderValue};
 use reqwest::Client;
-use crate::errors::{Result, ApiError};
+use crate::errors::api_errors::{Result, ApiError};
 use super::clients_structs::{ResponseSecurity, ResponseOverview, ResponseTokens};
 
 pub struct BirdeyeClient {

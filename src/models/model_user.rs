@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::{errors::{ApiError, Result}, AppState};
+use crate::{errors::api_errors::{ApiError, Result}, AppState};
 
 #[derive(Debug, sqlx::FromRow, Serialize)]
 pub struct User {

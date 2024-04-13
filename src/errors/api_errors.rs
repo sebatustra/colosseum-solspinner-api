@@ -6,8 +6,8 @@ pub type Result<T> = core::result::Result<T, ApiError>;
 pub enum ApiError {
     // token errors
     TokenCreateFail,
-    TokenAlreadyExists,
     TokenGetFail,
+    TokenUpdateFail,
 
     // user errors
     UserCreateFail,
@@ -41,7 +41,7 @@ impl IntoResponse for ApiError {
             // tokens
             ApiError::TokenCreateFail => "Error creating the token",
             ApiError::TokenGetFail => "Error fetching tokens",
-            ApiError::TokenAlreadyExists => "token already exists",
+            ApiError::TokenUpdateFail => "Error updating the token",
 
             // users
             ApiError::UserCreateFail => "Error creating the user",

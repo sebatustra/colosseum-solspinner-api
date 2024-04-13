@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::{errors::{ApiError, Result}, AppState};
+use crate::{errors::api_errors::{ApiError, Result}, AppState};
 
 #[derive(sqlx::FromRow, Debug, Serialize, Clone)]
 pub struct Position {

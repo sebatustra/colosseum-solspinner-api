@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{clients::clients_structs::TokenFromClient, AppState, errors::{ApiError, Result}};
+use crate::{clients::clients_structs::TokenFromClient, AppState, errors::api_errors::{ApiError, Result}};
 
 #[derive(Deserialize, Debug, sqlx::FromRow, Clone, Serialize)]
 pub struct SelectedToken {
@@ -99,7 +99,7 @@ impl SelectedToken {
             Ok(_) => Ok(()),
             Err(e) => {
                 println!("Error updating tokens to inactive. Error: {}", e);
-                Err(ApiError::SelectedTokenUpdateFail)  // Assuming you have this variant in your ApiError enum
+                Err(ApiError::SelectedTokenUpdateFail)
             }
         }
     }

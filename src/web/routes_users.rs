@@ -1,5 +1,5 @@
 use axum::{extract::{Path, State}, routing::{get, post}, Json, Router};
-use crate::{errors::Result, models::model_user::{User, UserForCreate}, AppState};
+use crate::{errors::api_errors::Result, models::model_user::{User, UserForCreate}, AppState};
 
 pub fn routes(state: AppState) -> Router {
     Router::new()

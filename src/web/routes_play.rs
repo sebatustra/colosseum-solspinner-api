@@ -1,22 +1,22 @@
 use axum::{extract::State, routing::get, Json, Router};
 
-use crate::{errors::Result, models::model_selected_token::SelectedToken, AppState};
+use crate::{errors::api_errors::Result, models::model_token::Token, AppState};
 
 
 pub fn routes(state: AppState) -> Router {
     Router::new()
-        .route("/play/coins", get(get_all_active_selected_tokens))
+        .route("/play/coins", get(get_all_active_tokens))
         .route("/play/coins-filtered", get(get_7_active_selected_tokens))
         .route("/play/run", get(get_random_selected_token))
         .with_state(state)
 }
 
-async fn get_all_active_selected_tokens(
+async fn get_all_active_tokens(
     State(state): State<AppState>
-) -> Result<Json<Vec<SelectedToken>>> {
+) -> Result<Json<Vec<Token>>> {
     println!("->> {:<12} - get_all_active_selected_tokens", "HANDLER");
 
-    let tokens = SelectedToken::get_all_active_selected_tokens(state).await?;
+    let tokens = Token::get_all_active_tokens(state).await?;
 
     Ok(Json(tokens))
 }
@@ -39,7 +39,7 @@ async fn get_random_selected_token(
     let tokens = SelectedToken::get_all_active_selected_tokens(state).await?;
 
     if tokens.is_empty() {
-        return Err(crate::errors::ApiError::SelectedTokenGetFail)
+        return Err(crate::errors::api_errors::ApiError::SelectedTokenGetFail)
     }
     
     let random_index = rand::random::<usize>() % tokens.len();
