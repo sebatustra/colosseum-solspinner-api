@@ -11,6 +11,7 @@ pub struct Token {
     pub created_at: chrono::DateTime<chrono::Utc>
 }
 
+#[derive(Debug, Serialize, Clone)]
 pub struct TokenForClient {
     pub mint_pubkey: String,
     pub symbol: String,
@@ -119,7 +120,7 @@ impl Token {
 
     pub async fn get_all_active_tokens(
         state: AppState
-    ) -> Result<Vec<Token>> {
+    ) -> Result<Vec<TokenForClient>> {
         println!("->> {:<12} - get_all_active_tokens", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Token>(
@@ -129,7 +130,17 @@ impl Token {
         .await;
 
         match result {
-            Ok(result) => Ok(result),
+            Ok(result) => {
+                let mut tokens_for_client = Vec::new();
+
+                for token in result {
+                    // fetch data!!
+                    let change = 0.12;
+                    tokens_for_client.push(TokenForClient::from_token(token, change))
+                }
+
+                Ok(tokens_for_client)
+            },
             Err(e) => {
                 println!("Error fetching active tokens. Error: {}", e);
                 Err(ApiError::TokenGetFail)
@@ -150,7 +161,6 @@ impl Token {
 
         match result {
             Ok(result) => {
-
                 let mut tokens_for_client = Vec::new();
 
                 for token in result {
@@ -160,7 +170,6 @@ impl Token {
                 }
 
                 Ok(tokens_for_client)
-
             },
             Err(e) => {
                 println!("Error fetching active tokens. Error: {}", e);
