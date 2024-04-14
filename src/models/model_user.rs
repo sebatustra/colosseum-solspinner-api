@@ -56,7 +56,7 @@ impl User {
     }
 
     pub async fn get_user(
-        pubkey: String, 
+        pubkey: &str, 
         state: AppState
     ) -> Result<Option<User>> {
         println!("->> {:<12} - get_user", "CONTROLLER");

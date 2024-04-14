@@ -10,10 +10,12 @@ use crate::{
 pub struct CoinSelector;
 
 impl CoinSelector {
-    pub async fn run_coin_selection(state: AppState) -> Result<()> {
+    pub async fn run_coin_selection(
+        state: AppState, 
+    ) -> Result<()> {
         println!("->> {:<12} - run_coin_selection", "SELECTOR");
 
-        let birdeye_client = BirdeyeClient::new(&state.birdeye_api_key);
+        let birdeye_client = &state.birdeye_client;
 
         let excluded_addresses = get_excluded_addresses();
     
@@ -23,9 +25,13 @@ impl CoinSelector {
         let list_response_2 = birdeye_client.get_tokens_list(2)
             .await.map_err(|_| CronError::BirdeyeClientFail)?;
 
+        let list_response_3 = birdeye_client.get_tokens_list(3)
+        .await.map_err(|_| CronError::BirdeyeClientFail)?;
+
         let token_list = join_token_lists(
             list_response_1.data.tokens, 
-            list_response_2.data.tokens
+            list_response_2.data.tokens,
+            list_response_3.data.tokens
         );
         
         let partially_filtered_tokens = filter_by_mc_liquidity_and_addresses(
@@ -55,15 +61,20 @@ async fn update_or_create_tokens(
     current_active_tokens_pubkey: Vec<String>,
     state: AppState
 ) -> Result<()> {
+    println!("length of tokens passed to update_or_create_tokens: {}", token_list.len());
+
     for token in token_list {
         if current_active_tokens_pubkey.contains(&token.address) {
+            println!("Token is currently active: {}", token.address);
             continue;
         } else {
+            println!("Token is not currently active: {}", token.address);
             match Token::get_token(&token.address, state.clone()
             )
             .await
             .map_err(|_| CronError::UpdateTokenStatusFail)? {
                 Some(token) => {
+                    println!("Token exists... changing it to active: {}", &token.mint_pubkey);
                     Token::update_token_state(
                         &token.mint_pubkey, 
                         true, 
@@ -73,6 +84,7 @@ async fn update_or_create_tokens(
                     .map_err(|_| CronError::UpdateTokenStatusFail)?
                 },
                 None => {
+                    println!("Token does not exists... creating it now: {}", token.address);
                     let new_token = TokenForCreate {
                         mint_pubkey: token.address,
                         symbol: token.symbol.clone(),
@@ -110,11 +122,13 @@ async fn get_current_active_pubkeys(
 
 fn join_token_lists(
     token_list_1: Vec<TokenFromClient>,
-    token_list_2: Vec<TokenFromClient>
+    token_list_2: Vec<TokenFromClient>,
+    token_list_3: Vec<TokenFromClient>,
 ) -> Vec<TokenFromClient> {
     token_list_1
         .into_iter()
         .chain(token_list_2.into_iter())
+        .chain(token_list_3.into_iter())
         .collect()
 }
 
@@ -139,30 +153,42 @@ fn filter_by_mc_liquidity_and_addresses(
 
 async fn filter_by_24htrade_and_security(
     token_list: Vec<TokenFromClient>,
-    birdeye_client: BirdeyeClient
+    birdeye_client: &BirdeyeClient
 ) -> Result<Vec<TokenFromClient>> {
+    let mut seen_pubkeys = HashSet::new();
+
     let mut fully_filtered_tokens = Vec::new();
 
     for mut token in token_list {
-        let token_overview = birdeye_client.get_token_overview(&token.address)
-            .await.map_err(|_| CronError::BirdeyeClientFail)?;
-            
-        if token_overview.data.trade_24h >= 500 {
-            token.price_change_24h_percent = token_overview.data.price_change_24h_percent;
-
-            let token_security =  birdeye_client.get_token_security(&token.address)
+        if seen_pubkeys.insert(token.address.clone()) {
+            let token_overview = birdeye_client.get_token_overview(&token.address)
                 .await.map_err(|_| CronError::BirdeyeClientFail)?;
-
-            if token_security.data.owner_address.is_none() && token_security.data.freeze_authority.is_none() {
-                fully_filtered_tokens.push(token)
+                
+            if token_overview.data.trade_24h >= 500 {
+                token.price_change_24h_percent = token_overview.data.price_change_24h_percent;
+    
+                let token_security =  birdeye_client.get_token_security(&token.address)
+                    .await.map_err(|_| CronError::BirdeyeClientFail)?;
+    
+                if token_security.data.owner_address.is_none() && token_security.data.freeze_authority.is_none() {
+                    fully_filtered_tokens.push(token)
+                }
             }
         }
    }
 
-   if fully_filtered_tokens.len() < 25 {
+   if fully_filtered_tokens.len() < 7 {
         return Err(CronError::FilteredTokensLengthFail)
    } else {
-       Ok(fully_filtered_tokens.drain(0..25).collect())
+        let drain_limit = if fully_filtered_tokens.len() > 25 {
+            25
+        } else {
+            fully_filtered_tokens.len()
+        };
+
+        let drained_list: Vec<TokenFromClient> =  fully_filtered_tokens.drain(0..drain_limit).collect();
+
+       Ok(drained_list)
    }
 }
 

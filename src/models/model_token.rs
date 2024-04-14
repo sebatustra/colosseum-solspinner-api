@@ -18,19 +18,34 @@ pub struct TokenForClient {
     pub name: String,
     pub logo_url: String,
     pub price_change_24h_percent: f64,
+    pub volume_24h_usd: f64,
+    pub discord_url: Option<String>,
+    pub twitter_url: Option<String>,
+    pub website_url: Option<String>,
+    pub telegram_url: Option<String>
 }
 
 impl TokenForClient {
     pub fn from_token(
         token: Token,
-        price_change_24h_percent: f64
+        price_change_24h_percent: f64,
+        volume_24h_usd: f64,
+        discord_url: Option<String>,
+        twitter_url: Option<String>,
+        website_url: Option<String>,
+        telegram_url: Option<String>
     ) -> Self {
         Self {
             mint_pubkey: token.mint_pubkey,
             symbol: token.symbol,
             name: token.name,
             logo_url: token.logo_url,
-            price_change_24h_percent
+            price_change_24h_percent,
+            volume_24h_usd,
+            discord_url,
+            twitter_url,
+            telegram_url,
+            website_url
         }
     }
 }
@@ -134,9 +149,17 @@ impl Token {
                 let mut tokens_for_client = Vec::new();
 
                 for token in result {
-                    // fetch data!!
-                    let change = 0.12;
-                    tokens_for_client.push(TokenForClient::from_token(token, change))
+                    let token_overview = state.birdeye_client.get_token_overview(&token.mint_pubkey).await?.data;
+
+                    tokens_for_client.push(TokenForClient::from_token(
+                        token, 
+                        token_overview.price_change_24h_percent, 
+                        token_overview.volume_24h_usd,
+                        token_overview.extensions.discord,
+                        token_overview.extensions.twitter,
+                        token_overview.extensions.website,
+                        token_overview.extensions.telegram,
+                    ))
                 }
 
                 Ok(tokens_for_client)
@@ -164,12 +187,24 @@ impl Token {
                 let mut tokens_for_client = Vec::new();
 
                 for token in result {
-                    // fetch data!!
-                    let change = 0.12;
-                    tokens_for_client.push(TokenForClient::from_token(token, change))
+                    let token_overview = state.birdeye_client.get_token_overview(&token.mint_pubkey).await?.data;
+
+                    tokens_for_client.push(TokenForClient::from_token(
+                        token, 
+                        token_overview.price_change_24h_percent, 
+                        token_overview.volume_24h_usd,
+                        token_overview.extensions.discord,
+                        token_overview.extensions.twitter,
+                        token_overview.extensions.website,
+                        token_overview.extensions.telegram,
+                    ))
                 }
 
-                Ok(tokens_for_client)
+                tokens_for_client.sort_by(|a, b| {
+                    b.volume_24h_usd.partial_cmp(&a.volume_24h_usd).unwrap_or(std::cmp::Ordering::Equal)
+                });
+
+                Ok(tokens_for_client.into_iter().take(7).collect())
             },
             Err(e) => {
                 println!("Error fetching active tokens. Error: {}", e);

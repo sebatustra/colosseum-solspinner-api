@@ -34,7 +34,18 @@ pub struct OverviewData {
     #[serde(rename = "trade24h")]
     pub trade_24h: u64,
     #[serde(rename = "priceChange24hPercent")]
-    pub price_change_24h_percent: f64
+    pub price_change_24h_percent: f64,
+    #[serde(rename = "v24hUSD")]
+    pub volume_24h_usd: f64,
+    pub extensions: OverviewExtensionData
+}
+
+#[derive(Debug, Deserialize)]
+pub struct OverviewExtensionData {
+    pub discord: Option<String>,
+    pub twitter: Option<String>,
+    pub telegram: Option<String>,
+    pub website: Option<String>
 }
 
 // TOKEN LIST

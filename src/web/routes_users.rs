@@ -35,7 +35,7 @@ async fn get_user(
 ) -> Result<Json<Option<User>>> {
     println!("->> {:<12} - get_user", "HANDLER");
 
-    let user = User::get_user(pubkey, state).await?;
+    let user = User::get_user(&pubkey, state).await?;
 
     Ok(Json(user))
 }

@@ -3,6 +3,7 @@ use reqwest::Client;
 use crate::errors::api_errors::{Result, ApiError};
 use super::clients_structs::{ResponseSecurity, ResponseOverview, ResponseTokens};
 
+#[derive(Clone)]
 pub struct BirdeyeClient {
     pub client: reqwest::Client
 }

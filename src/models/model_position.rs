@@ -187,8 +187,8 @@ impl Position {
     }
 
     pub async fn get_user_positions_by_token(
-        user_pubkey: String,
-        token_pubkey: String,
+        user_pubkey: &str,
+        token_pubkey: &str,
         state: AppState
     ) -> Result<Vec<Position>> {
         println!("->> {:<12} - get_user_positions_by_token", "CONTROLLER");
@@ -216,7 +216,7 @@ impl Position {
     }
 
     pub async fn get_token_positions(
-        token_pubkey: String,
+        token_pubkey: &str,
         state: AppState
     ) -> Result<Vec<Position>> {
         println!("->> {:<12} - get_token_positions", "CONTROLLER");

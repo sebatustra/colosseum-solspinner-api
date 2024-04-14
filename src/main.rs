@@ -1,4 +1,5 @@
 use axum::{middleware, Extension, Router};
+use clients::client_birdeye::BirdeyeClient;
 use sqlx::PgPool;
 use shuttle_runtime::SecretStore;
 use tokio_cron_scheduler::{Job, JobScheduler};
@@ -17,7 +18,7 @@ mod coin_selector;
 pub struct AppState {
     db: PgPool,
     api_key: String,
-    birdeye_api_key: String,
+    birdeye_client: BirdeyeClient,
 }
 
 #[shuttle_runtime::main]
@@ -32,8 +33,10 @@ async fn main(
 
     let birdeye_api_key = secrets.get("BIRDEYE_API_KEY").expect("Birdeye API key not found in secrets!");
 
-    let state = AppState { db, api_key, birdeye_api_key };
-
+    let birdeye_client = BirdeyeClient::new(&birdeye_api_key);
+    
+    let state = AppState { db, api_key, birdeye_client };
+    
     let position_routes = web::routes_positions::routes(state.clone());
     let user_routes = web::routes_users::routes(state.clone());
     let token_routes = web::routes_tokens::routes(state.clone());
@@ -54,13 +57,15 @@ async fn main(
     let scheduler = JobScheduler::new().await.expect("Failed to create job scheduler");
 
     scheduler.add(
-        Job::new_async("0 0 0 * * *", move |_, _| {
+        Job::new_async("0 */2 * * * *", move |_, _| {
             let state_copy = state.clone();
             Box::pin(async move {
                 let mut attempts = 0;
 
                 while attempts < 3 {
-                    match CoinSelector::run_coin_selection(state_copy.clone()).await {
+                    match CoinSelector::run_coin_selection(
+                        state_copy.clone(),
+                    ).await {
                         Ok(_) => {
                             println!("->> {:<12} - run_coin_selection succeeded", "MAIN");
                             break;
