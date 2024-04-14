@@ -22,11 +22,6 @@ pub enum ApiError {
     JupiterDeserializationFail,
     BirdeyeFetchFail,
     BirdeyeDeserializationFail,
-
-    // selected token errors
-    SelectedTokenCreateFail,
-    SelectedTokenGetFail,
-    SelectedTokenUpdateFail,
 }
 
 impl IntoResponse for ApiError {
@@ -53,13 +48,7 @@ impl IntoResponse for ApiError {
 
             // birdeye
             ApiError::BirdeyeFetchFail => "Error fetching data from Birdeye",
-            ApiError::BirdeyeDeserializationFail => "Error deserializing Birdeye data",
-
-            // selected token
-            ApiError::SelectedTokenCreateFail => "Error creating the selected token",
-            ApiError::SelectedTokenGetFail => "Error fetching the selected token",
-            ApiError::SelectedTokenUpdateFail => "Error updating selected coins",
-
+            ApiError::BirdeyeDeserializationFail => "Error deserializing Birdeye data"
         };
 
         (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()

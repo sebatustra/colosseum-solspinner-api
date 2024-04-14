@@ -30,9 +30,11 @@ impl BirdeyeClient {
     pub async fn get_tokens_list(&self, page: u32) -> Result<ResponseTokens> {
         println!("->> {:<12} - get_tokens_list", "CLIENT");
 
+        let offset = (page - 1) * 50;
+
         let query_url = format!(
             "https://public-api.birdeye.so/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&offset={}&limit=50",
-            page
+            offset
         );
 
         let response = self.client.get(query_url).send()
@@ -44,7 +46,7 @@ impl BirdeyeClient {
             .json::<ResponseTokens>()
             .await
             .map_err(|e| {
-                println!("Birdeye client failed deserializing data. Error: {}", e);
+                println!("Birdeye client failed deserializing data in get_tokens_list. Error: {}", e);
                 ApiError::BirdeyeDeserializationFail
             })?;
             
@@ -68,7 +70,7 @@ impl BirdeyeClient {
             .json::<ResponseSecurity>()
             .await
             .map_err(|e| {
-                println!("Birdeye client failed deserializing data. Error: {}", e);
+                println!("Birdeye client failed deserializing data in get_token_security. Token pubkey: {}. Error: {}", token_pubkey, e);
                 ApiError::BirdeyeDeserializationFail
             })?;
 
@@ -86,13 +88,13 @@ impl BirdeyeClient {
         let response = self.client.get(query_url).send()
             .await
             .map_err(|e| {
-                println!("Birdeye client failed fetching data. Error: {}", e);
+                println!("Birdeye client failed fetching data in get_token_overview for pubkey: {}. Error: {}", token_pubkey, e);
                 ApiError::BirdeyeFetchFail
             })?
             .json::<ResponseOverview>()
             .await
             .map_err(|e| {
-                println!("Birdeye client failed deserializing data. Error: {}", e);
+                println!("Birdeye client failed deserializing data in get_token_overview for pubkey: {}. Error: {}", token_pubkey, e);
                 ApiError::BirdeyeDeserializationFail
             })?;
 

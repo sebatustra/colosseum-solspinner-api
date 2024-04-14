@@ -33,14 +33,15 @@ pub struct ResponseOverview {
 pub struct OverviewData {
     #[serde(rename = "trade24h")]
     pub trade_24h: u64,
+    pub decimals: i32,
     #[serde(rename = "priceChange24hPercent")]
     pub price_change_24h_percent: f64,
     #[serde(rename = "v24hUSD")]
     pub volume_24h_usd: f64,
-    pub extensions: OverviewExtensionData
+    pub extensions: Option<OverviewExtensionData>
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct OverviewExtensionData {
     pub discord: Option<String>,
     pub twitter: Option<String>,
@@ -74,7 +75,17 @@ pub struct TokenFromClient {
     #[serde(rename = "v24hUSD")]
     pub volume_24h_usd: f64,
     #[serde(skip_deserializing)]
-    pub price_change_24h_percent: f64
+    pub price_change_24h_percent: f64,
+    #[serde(skip_deserializing)]
+    pub discord: Option<String>,
+    #[serde(skip_deserializing)]
+    pub twitter: Option<String>,
+    #[serde(skip_deserializing)]
+    pub telegram: Option<String>,
+    #[serde(skip_deserializing)]
+    pub website: Option<String>,
+    #[serde(skip_deserializing)]
+    pub decimals: i32
 }
 
 // JUPITER API

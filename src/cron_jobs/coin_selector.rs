@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use tokio_cron_scheduler::Job;
+
 use crate::{
     clients::{client_birdeye::BirdeyeClient, clients_structs::TokenFromClient}, 
     errors::cron_errors::{CronError, Result}, 
@@ -8,6 +10,40 @@ use crate::{
 };
 
 pub struct CoinSelector;
+
+impl CoinSelector {
+    pub fn init_job(
+        job_schedule: &str,
+        state: AppState
+    ) -> Job {
+        Job::new_async(job_schedule, move |_, _| {
+            let state_copy = state.clone();
+            Box::pin(async move {
+                let mut attempts = 0;
+
+                while attempts < 3 {
+                    match Self::run_coin_selection(
+                        state_copy.clone(),
+                    ).await {
+                        Ok(_) => {
+                            println!("->> {:<12} - run_coin_selection succeeded", "CRON");
+                            break;
+                        },
+                        Err(e) => {
+                            println!("->> {:<12} - run_coin_selection failed. Error: {e}", "CRON");
+                            attempts += 1;
+
+                            if attempts >= 3 {
+                                println!("->> {:<12} - run_coin_selection failed 3 times", "CRON");
+                                break;
+                            }
+                        }
+                    }
+                }
+            })
+        }).expect("Failed to add job")
+    }
+}
 
 impl CoinSelector {
     pub async fn run_coin_selection(
@@ -25,13 +61,10 @@ impl CoinSelector {
         let list_response_2 = birdeye_client.get_tokens_list(2)
             .await.map_err(|_| CronError::BirdeyeClientFail)?;
 
-        let list_response_3 = birdeye_client.get_tokens_list(3)
-        .await.map_err(|_| CronError::BirdeyeClientFail)?;
-
         let token_list = join_token_lists(
             list_response_1.data.tokens, 
             list_response_2.data.tokens,
-            list_response_3.data.tokens
+
         );
         
         let partially_filtered_tokens = filter_by_mc_liquidity_and_addresses(
@@ -63,6 +96,9 @@ async fn update_or_create_tokens(
 ) -> Result<()> {
     println!("length of tokens passed to update_or_create_tokens: {}", token_list.len());
 
+    let token_list_pubkeys: HashSet<String> = token_list.iter().map(|token| token.address.clone()).collect();
+    let current_active_set: HashSet<String> = current_active_tokens_pubkey.clone().into_iter().collect();
+
     for token in token_list {
         if current_active_tokens_pubkey.contains(&token.address) {
             println!("Token is currently active: {}", token.address);
@@ -90,6 +126,13 @@ async fn update_or_create_tokens(
                         symbol: token.symbol.clone(),
                         name: token.name.clone(),
                         logo_url: token.logo_uri.clone(),
+                        price_change_24h_percent: token.price_change_24h_percent,
+                        volume_24h_usd: token.volume_24h_usd,
+                        discord_url: token.discord,
+                        twitter_url: token.twitter,
+                        website_url: token.website,
+                        telegram_url: token.telegram,
+                        decimals: token.decimals,
                         is_active: true
                     };
 
@@ -102,6 +145,16 @@ async fn update_or_create_tokens(
                 }
             }
         }
+    }
+
+    for pubkey in current_active_set.difference(&token_list_pubkeys) {
+        println!("Token is no longer active: {}", pubkey);
+        Token::update_token_state(
+            pubkey,
+             false, 
+            state.clone()
+        )
+        .await.map_err(|_| CronError::UpdateTokenStatusFail)?;
     }
 
     Ok(())
@@ -123,12 +176,10 @@ async fn get_current_active_pubkeys(
 fn join_token_lists(
     token_list_1: Vec<TokenFromClient>,
     token_list_2: Vec<TokenFromClient>,
-    token_list_3: Vec<TokenFromClient>,
 ) -> Vec<TokenFromClient> {
     token_list_1
         .into_iter()
         .chain(token_list_2.into_iter())
-        .chain(token_list_3.into_iter())
         .collect()
 }
 
@@ -166,7 +217,20 @@ async fn filter_by_24htrade_and_security(
                 
             if token_overview.data.trade_24h >= 500 {
                 token.price_change_24h_percent = token_overview.data.price_change_24h_percent;
-    
+                token.decimals = token_overview.data.decimals;
+
+                if token_overview.data.extensions.is_some() {
+                    token.discord = token_overview.data.extensions.clone().unwrap().discord;
+                    token.twitter = token_overview.data.extensions.clone().unwrap().twitter;
+                    token.telegram = token_overview.data.extensions.clone().unwrap().telegram;
+                    token.website = token_overview.data.extensions.unwrap().website;
+                } else {
+                    token.discord = None;
+                    token.twitter = None;
+                    token.telegram = None;
+                    token.website = None;
+                }
+
                 let token_security =  birdeye_client.get_token_security(&token.address)
                     .await.map_err(|_| CronError::BirdeyeClientFail)?;
     
@@ -177,18 +241,14 @@ async fn filter_by_24htrade_and_security(
         }
    }
 
-   if fully_filtered_tokens.len() < 7 {
+   println!("the length is: {}", fully_filtered_tokens.len());
+
+   if fully_filtered_tokens.len() < 25 {
         return Err(CronError::FilteredTokensLengthFail)
    } else {
-        let drain_limit = if fully_filtered_tokens.len() > 25 {
-            25
-        } else {
-            fully_filtered_tokens.len()
-        };
+        let drained_list: Vec<TokenFromClient> =  fully_filtered_tokens.drain(0..25).collect();
 
-        let drained_list: Vec<TokenFromClient> =  fully_filtered_tokens.drain(0..drain_limit).collect();
-
-       Ok(drained_list)
+        Ok(drained_list)
    }
 }
 

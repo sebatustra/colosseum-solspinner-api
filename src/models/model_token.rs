@@ -1,18 +1,8 @@
 use serde::{Deserialize, Serialize};
 use crate::{errors::api_errors::{ApiError, Result}, AppState};
 
-#[derive(Debug, sqlx::FromRow, Serialize)]
+#[derive(Debug, sqlx::FromRow, Serialize, Clone)]
 pub struct Token {
-    pub mint_pubkey: String,
-    pub symbol: String,
-    pub name: String,
-    pub logo_url: String,
-    pub is_active: bool,
-    pub created_at: chrono::DateTime<chrono::Utc>
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct TokenForClient {
     pub mint_pubkey: String,
     pub symbol: String,
     pub name: String,
@@ -22,32 +12,10 @@ pub struct TokenForClient {
     pub discord_url: Option<String>,
     pub twitter_url: Option<String>,
     pub website_url: Option<String>,
-    pub telegram_url: Option<String>
-}
-
-impl TokenForClient {
-    pub fn from_token(
-        token: Token,
-        price_change_24h_percent: f64,
-        volume_24h_usd: f64,
-        discord_url: Option<String>,
-        twitter_url: Option<String>,
-        website_url: Option<String>,
-        telegram_url: Option<String>
-    ) -> Self {
-        Self {
-            mint_pubkey: token.mint_pubkey,
-            symbol: token.symbol,
-            name: token.name,
-            logo_url: token.logo_url,
-            price_change_24h_percent,
-            volume_24h_usd,
-            discord_url,
-            twitter_url,
-            telegram_url,
-            website_url
-        }
-    }
+    pub telegram_url: Option<String>,
+    pub decimals: i32,
+    pub is_active: bool,
+    pub created_at: chrono::DateTime<chrono::Utc>
 }
 
 #[derive(Deserialize, Debug)]
@@ -56,6 +24,13 @@ pub struct TokenForCreate {
     pub symbol: String,
     pub name: String,
     pub logo_url: String,
+    pub price_change_24h_percent: f64,
+    pub volume_24h_usd: f64,
+    pub discord_url: Option<String>,
+    pub twitter_url: Option<String>,
+    pub website_url: Option<String>,
+    pub telegram_url: Option<String>,
+    pub decimals: i32,
     pub is_active: bool
 }
 
@@ -74,12 +49,22 @@ impl Token {
         println!("->> {:<12} - create_token", "CONTROLLER");
         
         let result = sqlx::query_as::<_, Token>(
-                "INSERT INTO tokens (mint_pubkey, symbol, name, logo_url, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING *"
+                r#"INSERT INTO tokens 
+                (mint_pubkey, symbol, name, logo_url, price_change_24h_percent, volume_24h_usd, discord_url, twitter_url, website_url, telegram_url, decimals, is_active) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+                RETURNING *"#
             )
             .bind(token.mint_pubkey)
             .bind(token.symbol)
             .bind(token.name)
             .bind(token.logo_url)
+            .bind(token.price_change_24h_percent)
+            .bind(token.volume_24h_usd)
+            .bind(token.discord_url)
+            .bind(token.twitter_url)
+            .bind(token.website_url)
+            .bind(token.telegram_url)
+            .bind(token.decimals)
             .bind(token.is_active)
             .fetch_one(&state.db)
             .await;
@@ -135,7 +120,7 @@ impl Token {
 
     pub async fn get_all_active_tokens(
         state: AppState
-    ) -> Result<Vec<TokenForClient>> {
+    ) -> Result<Vec<Token>> {
         println!("->> {:<12} - get_all_active_tokens", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Token>(
@@ -145,25 +130,8 @@ impl Token {
         .await;
 
         match result {
-            Ok(result) => {
-                let mut tokens_for_client = Vec::new();
-
-                for token in result {
-                    let token_overview = state.birdeye_client.get_token_overview(&token.mint_pubkey).await?.data;
-
-                    tokens_for_client.push(TokenForClient::from_token(
-                        token, 
-                        token_overview.price_change_24h_percent, 
-                        token_overview.volume_24h_usd,
-                        token_overview.extensions.discord,
-                        token_overview.extensions.twitter,
-                        token_overview.extensions.website,
-                        token_overview.extensions.telegram,
-                    ))
-                }
-
-                Ok(tokens_for_client)
-            },
+            Ok(tokens) => Ok(tokens)
+            ,
             Err(e) => {
                 println!("Error fetching active tokens. Error: {}", e);
                 Err(ApiError::TokenGetFail)
@@ -173,39 +141,21 @@ impl Token {
 
     pub async fn get_7_active_tokens(
         state: AppState
-    ) -> Result<Vec<TokenForClient>> {
+    ) -> Result<Vec<Token>> {
         println!("->> {:<12} - get_7_active_tokens", "CONTROLLER");
 
         let result = sqlx::query_as::<_, Token>(
-            "SELECT * FROM tokens WHERE is_active = true"
+            r#"SELECT * 
+                FROM tokens 
+                WHERE is_active = true
+                ORDER BY volume_24h_usd DESC
+                LIMIT 7"#
         )
         .fetch_all(&state.db)
         .await;
 
         match result {
-            Ok(result) => {
-                let mut tokens_for_client = Vec::new();
-
-                for token in result {
-                    let token_overview = state.birdeye_client.get_token_overview(&token.mint_pubkey).await?.data;
-
-                    tokens_for_client.push(TokenForClient::from_token(
-                        token, 
-                        token_overview.price_change_24h_percent, 
-                        token_overview.volume_24h_usd,
-                        token_overview.extensions.discord,
-                        token_overview.extensions.twitter,
-                        token_overview.extensions.website,
-                        token_overview.extensions.telegram,
-                    ))
-                }
-
-                tokens_for_client.sort_by(|a, b| {
-                    b.volume_24h_usd.partial_cmp(&a.volume_24h_usd).unwrap_or(std::cmp::Ordering::Equal)
-                });
-
-                Ok(tokens_for_client.into_iter().take(7).collect())
-            },
+            Ok(tokens) => Ok(tokens),
             Err(e) => {
                 println!("Error fetching active tokens. Error: {}", e);
                 Err(ApiError::TokenGetFail)
@@ -232,6 +182,39 @@ impl Token {
             Ok(_) => Ok(()),
             Err(e) => {
                 println!("Error updating token is_active column. Error: {}", e);
+                Err(ApiError::TokenUpdateFail)
+            }
+        }
+    }
+
+    pub async fn update_token_financial_data(
+        mint_pubkey: &str,
+        price_change_24h_percent: f64,
+        volume_24h_usd: f64,
+        decimals: i32,
+        state: AppState
+    ) -> Result<()> {
+        println!("->> {:<12} - update_token_state", "CONTROLLER");
+
+        let result = sqlx::query(
+            r#"UPDATE tokens 
+            SET 
+                price_change_24h_percent = $1,
+                volume_24h_usd = $2,
+                decimals = $3
+            WHERE mint_pubkey = $4"#
+        )
+        .bind(price_change_24h_percent)
+        .bind(volume_24h_usd)
+        .bind(decimals)
+        .bind(mint_pubkey)
+        .execute(&state.db)
+        .await;
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                println!("Error updating token financial data. Error: {}", e);
                 Err(ApiError::TokenUpdateFail)
             }
         }
