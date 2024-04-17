@@ -36,7 +36,7 @@ async fn get_random_token(
 ) -> Result<Json<Option<Token>>> {
     println!("->> {:<12} - get_random_token", "HANDLER");
 
-    let tokens = Token::get_7_active_tokens(state).await?;
+    let tokens = Token::get_all_active_tokens(state).await?;
 
     if tokens.is_empty() {
         return Ok(Json(None))
