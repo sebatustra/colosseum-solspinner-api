@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::{errors::{ApiError, Result}, AppState};
+use crate::{errors::api_errors::{ApiError, Result}, AppState};
 
 #[derive(Debug, sqlx::FromRow, Serialize)]
 pub struct User {
@@ -56,7 +56,7 @@ impl User {
     }
 
     pub async fn get_user(
-        pubkey: String, 
+        pubkey: &str, 
         state: AppState
     ) -> Result<Option<User>> {
         println!("->> {:<12} - get_user", "CONTROLLER");

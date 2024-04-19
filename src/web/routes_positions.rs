@@ -1,5 +1,5 @@
 use axum::{extract::{Path, State}, routing::{get, post}, Json, Router};
-use crate::{clients::client_jupiter::JupiterClient, errors::Result, models::model_position::{Position, PositionForCreate, PositionWithProfit, UpdatePositionData}, utils, AppState};
+use crate::{clients::client_jupiter::JupiterClient, errors::api_errors::Result, models::model_position::{Position, PositionForCreate, PositionWithProfit, UpdatePositionData}, utils, AppState};
 
 pub fn routes(state: AppState) -> Router {
     Router::new()
@@ -102,7 +102,11 @@ async fn get_user_positions_by_token(
 ) -> Result<Json<Vec<Position>>> {
     println!("->> {:<12} - get_user_positions_by_token", "HANDLER");
 
-    let positions = Position::get_user_positions_by_token(user_pubkey, mint_pubkey, state).await?;
+    let positions = Position::get_user_positions_by_token(
+        &user_pubkey,
+        &mint_pubkey, 
+        state
+    ).await?;
 
     Ok(Json(positions))
 }
@@ -113,7 +117,7 @@ async fn get_token_positions(
 ) -> Result<Json<Vec<Position>>> {
     println!("->> {:<12} - get_token_positions", "HANDLER");
 
-    let positions = Position::get_token_positions(mint_pubkey, state).await?;
+    let positions = Position::get_token_positions(&mint_pubkey, state).await?;
 
     Ok(Json(positions))
 }

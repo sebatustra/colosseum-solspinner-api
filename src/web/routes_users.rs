@@ -1,5 +1,5 @@
 use axum::{extract::{Path, State}, routing::{get, post}, Json, Router};
-use crate::{errors::Result, models::model_user::{User, UserForCreate}, AppState};
+use crate::{errors::api_errors::Result, models::model_user::{User, UserForCreate}, AppState};
 
 pub fn routes(state: AppState) -> Router {
     Router::new()
@@ -35,7 +35,7 @@ async fn get_user(
 ) -> Result<Json<Option<User>>> {
     println!("->> {:<12} - get_user", "HANDLER");
 
-    let user = User::get_user(pubkey, state).await?;
+    let user = User::get_user(&pubkey, state).await?;
 
     Ok(Json(user))
 }

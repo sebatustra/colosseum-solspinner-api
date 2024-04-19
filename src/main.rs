@@ -1,23 +1,25 @@
 use axum::{middleware, Extension, Router};
+use clients::client_birdeye::BirdeyeClient;
+use cron_jobs::token_updater::TokenUpdater;
 use sqlx::PgPool;
 use shuttle_runtime::SecretStore;
-use tokio_cron_scheduler::{Job, JobScheduler};
+use tokio_cron_scheduler::JobScheduler;
 use tower_http::cors::CorsLayer;
 
-use crate::coin_selector::CoinSelector;
+use crate::cron_jobs::coin_selector::CoinSelector;
 
 mod web;
 mod models;
 mod errors;
 mod clients;
 mod utils;
-mod coin_selector;
+mod cron_jobs;
 
 #[derive(Clone)]
 pub struct AppState {
     db: PgPool,
     api_key: String,
-    birdeye_api_key: String,
+    birdeye_client: BirdeyeClient,
 }
 
 #[shuttle_runtime::main]
@@ -26,14 +28,19 @@ async fn main(
     #[shuttle_runtime::Secrets] secrets: SecretStore,
 ) -> shuttle_axum::ShuttleAxum {
 
-    let _ = sqlx::migrate!().run(&db).await.map_err(|e| format!("Migrations failed. Error: {e}"));
+    let _ = sqlx::migrate!().run(&db)
+        .await.map_err(|e| format!("Migrations failed. Error: {e}"));
 
-    let api_key = secrets.get("API_KEY").expect("API key not found in secrets!");
+    let api_key = secrets.get("API_KEY")
+        .expect("API key not found in secrets!");
 
-    let birdeye_api_key = secrets.get("BIRDEYE_API_KEY").expect("Birdeye API key not found in secrets!");
+    let birdeye_api_key = secrets.get("BIRDEYE_API_KEY")
+        .expect("Birdeye API key not found in secrets!");
 
-    let state = AppState { db, api_key, birdeye_api_key };
-
+    let birdeye_client = BirdeyeClient::new(&birdeye_api_key);
+    
+    let state = AppState { db, api_key, birdeye_client };
+    
     let position_routes = web::routes_positions::routes(state.clone());
     let user_routes = web::routes_users::routes(state.clone());
     let token_routes = web::routes_tokens::routes(state.clone());
@@ -51,33 +58,15 @@ async fn main(
         .nest("/api", api_router)
         .layer(CorsLayer::permissive());
 
-    let scheduler = JobScheduler::new().await.expect("Failed to create job scheduler");
+    let scheduler = JobScheduler::new()
+        .await.expect("Failed to create job scheduler");
 
     scheduler.add(
-        Job::new_async("0 0 0 * * *", move |_, _| {
-            let state_copy = state.clone();
-            Box::pin(async move {
-                let mut attempts = 0;
+        CoinSelector::init_job("0 0 0 * * *", state.clone())
+    ).await.expect("Failed to schedule job");
 
-                while attempts < 3 {
-                    match CoinSelector::run_coin_selection(state_copy.clone()).await {
-                        Ok(_) => {
-                            println!("->> {:<12} - run_coin_selection succeeded", "MAIN");
-                            break;
-                        },
-                        Err(e) => {
-                            println!("->> {:<12} - run_coin_selection failed. Error: {e}", "MAIN");
-                            attempts += 1;
-
-                            if attempts >= 3 {
-                                println!("->> {:<12} - run_coin_selection failed 3 times", "MAIN");
-                                break;
-                            }
-                        }
-                    }
-                }
-            })
-        }).expect("Failed to add job")
+    scheduler.add(
+        TokenUpdater::init_job("0 */5 * * * *", state)
     ).await.expect("Failed to schedule job");
 
     scheduler.start().await.expect("Failed to start scheduler");

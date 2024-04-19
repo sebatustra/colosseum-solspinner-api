@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::{errors::{ApiError, Result}, AppState};
+use crate::{errors::api_errors::{ApiError, Result}, AppState};
 
 #[derive(sqlx::FromRow, Debug, Serialize, Clone)]
 pub struct Position {
@@ -187,8 +187,8 @@ impl Position {
     }
 
     pub async fn get_user_positions_by_token(
-        user_pubkey: String,
-        token_pubkey: String,
+        user_pubkey: &str,
+        token_pubkey: &str,
         state: AppState
     ) -> Result<Vec<Position>> {
         println!("->> {:<12} - get_user_positions_by_token", "CONTROLLER");
@@ -216,7 +216,7 @@ impl Position {
     }
 
     pub async fn get_token_positions(
-        token_pubkey: String,
+        token_pubkey: &str,
         state: AppState
     ) -> Result<Vec<Position>> {
         println!("->> {:<12} - get_token_positions", "CONTROLLER");
