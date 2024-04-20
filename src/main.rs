@@ -66,7 +66,7 @@ async fn main(
     ).await.expect("Failed to schedule job");
 
     scheduler.add(
-        TokenUpdater::init_job("0 */5 * * * *", state)
+        TokenUpdater::init_job("0 */10 * * * *", state)
     ).await.expect("Failed to schedule job");
 
     scheduler.start().await.expect("Failed to start scheduler");

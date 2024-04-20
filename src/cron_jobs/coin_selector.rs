@@ -9,6 +9,8 @@ use crate::{
     AppState
 };
 
+use super::cron_structs::TokenForCron;
+
 pub struct CoinSelector;
 
 impl CoinSelector {
@@ -77,6 +79,8 @@ impl CoinSelector {
             birdeye_client
         ).await?;
 
+        println!("fully_filtered_tokens lenght: {}", fully_filtered_tokens.len());
+
         let current_active_tokens_pubkey: Vec<String> = get_current_active_pubkeys(state.clone()).await?;
 
         update_or_create_tokens(
@@ -90,7 +94,7 @@ impl CoinSelector {
 }
 
 async fn update_or_create_tokens(
-    token_list: Vec<TokenFromClient>,
+    token_list: Vec<TokenForCron>,
     current_active_tokens_pubkey: Vec<String>,
     state: AppState
 ) -> Result<()> {
@@ -205,37 +209,41 @@ fn filter_by_mc_liquidity_and_addresses(
 async fn filter_by_24htrade_and_security(
     token_list: Vec<TokenFromClient>,
     birdeye_client: &BirdeyeClient
-) -> Result<Vec<TokenFromClient>> {
+) -> Result<Vec<TokenForCron>> {
     let mut seen_pubkeys = HashSet::new();
 
     let mut fully_filtered_tokens = Vec::new();
 
-    for mut token in token_list {
+    for token in token_list {
         if seen_pubkeys.insert(token.address.clone()) {
-            let token_overview = birdeye_client.get_token_overview(&token.address)
+            let mut token_for_cron = TokenForCron::create_from_client_token(token);
+
+
+            let token_overview = birdeye_client.get_token_overview(&token_for_cron.address)
                 .await.map_err(|_| CronError::BirdeyeClientFail)?;
                 
-            if token_overview.data.trade_24h >= 500 {
-                token.price_change_24h_percent = token_overview.data.price_change_24h_percent;
-                token.decimals = token_overview.data.decimals;
+            if token_overview.data.trade_24h.unwrap_or(0) >= 500
+            {
+                token_for_cron.price_change_24h_percent = token_overview.data.price_change_24h_percent.unwrap_or(0.0);
+                token_for_cron.decimals = token_overview.data.decimals;
 
                 if token_overview.data.extensions.is_some() {
-                    token.discord = token_overview.data.extensions.clone().unwrap().discord;
-                    token.twitter = token_overview.data.extensions.clone().unwrap().twitter;
-                    token.telegram = token_overview.data.extensions.clone().unwrap().telegram;
-                    token.website = token_overview.data.extensions.unwrap().website;
+                    token_for_cron.discord = token_overview.data.extensions.clone().unwrap().discord;
+                    token_for_cron.twitter = token_overview.data.extensions.clone().unwrap().twitter;
+                    token_for_cron.telegram = token_overview.data.extensions.clone().unwrap().telegram;
+                    token_for_cron.website = token_overview.data.extensions.unwrap().website;
                 } else {
-                    token.discord = None;
-                    token.twitter = None;
-                    token.telegram = None;
-                    token.website = None;
+                    token_for_cron.discord = None;
+                    token_for_cron.twitter = None;
+                    token_for_cron.telegram = None;
+                    token_for_cron.website = None;
                 }
 
-                let token_security =  birdeye_client.get_token_security(&token.address)
+                let token_security =  birdeye_client.get_token_security(&token_for_cron.address)
                     .await.map_err(|_| CronError::BirdeyeClientFail)?;
     
                 if token_security.data.owner_address.is_none() && token_security.data.freeze_authority.is_none() {
-                    fully_filtered_tokens.push(token)
+                    fully_filtered_tokens.push(token_for_cron)
                 }
             }
         }
@@ -246,7 +254,7 @@ async fn filter_by_24htrade_and_security(
    if fully_filtered_tokens.len() < 25 {
         return Err(CronError::FilteredTokensLengthFail)
    } else {
-        let drained_list: Vec<TokenFromClient> =  fully_filtered_tokens.drain(0..25).collect();
+        let drained_list: Vec<TokenForCron> =  fully_filtered_tokens.drain(0..25).collect();
 
         Ok(drained_list)
    }

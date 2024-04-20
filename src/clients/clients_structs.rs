@@ -32,12 +32,12 @@ pub struct ResponseOverview {
 #[derive(Deserialize, Debug)]
 pub struct OverviewData {
     #[serde(rename = "trade24h")]
-    pub trade_24h: u64,
+    pub trade_24h: Option<u64>,
     pub decimals: i32,
     #[serde(rename = "priceChange24hPercent")]
-    pub price_change_24h_percent: f64,
+    pub price_change_24h_percent: Option<f64>,
     #[serde(rename = "v24hUSD")]
-    pub volume_24h_usd: f64,
+    pub volume_24h_usd: Option<f64>,
     pub extensions: Option<OverviewExtensionData>
 }
 
@@ -54,38 +54,26 @@ pub struct OverviewExtensionData {
 #[derive(Deserialize, Debug)]
 pub struct ResponseTokens {
     pub data: TokenData,
-    pub success: bool
 }
 
 #[derive(Deserialize, Debug)]
 pub struct TokenData {
-    pub tokens: Vec<TokenFromClient>
+    pub tokens: Vec<TokenFromClient>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct TokenFromClient {
     pub address: String,
+    pub decimals: i32,
     pub liquidity: f64,
     #[serde(rename = "logoURI")]
-    pub logo_uri: String,
+    pub logo_uri: Option<String>,
     #[serde(rename = "mc")]
     pub market_cap: f64,
     pub name: String,
     pub symbol: String,
     #[serde(rename = "v24hUSD")]
     pub volume_24h_usd: f64,
-    #[serde(skip_deserializing)]
-    pub price_change_24h_percent: f64,
-    #[serde(skip_deserializing)]
-    pub discord: Option<String>,
-    #[serde(skip_deserializing)]
-    pub twitter: Option<String>,
-    #[serde(skip_deserializing)]
-    pub telegram: Option<String>,
-    #[serde(skip_deserializing)]
-    pub website: Option<String>,
-    #[serde(skip_deserializing)]
-    pub decimals: i32
 }
 
 // JUPITER API
@@ -99,3 +87,4 @@ pub struct JupiterResponse {
 pub struct JupiterTokenData {
     pub price: f64
 }
+
