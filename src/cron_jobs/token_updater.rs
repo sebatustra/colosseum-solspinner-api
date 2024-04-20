@@ -67,8 +67,8 @@ impl TokenUpdater {
 
             Token::update_token_financial_data(
                 &token.mint_pubkey, 
-                token_overview.data.price_change_24h_percent, 
-                token_overview.data.volume_24h_usd, 
+                token_overview.data.price_change_24h_percent.unwrap_or(0.0), 
+                token_overview.data.volume_24h_usd.unwrap_or(0.0), 
                 token_overview.data.decimals, 
                 state.clone()
             ).await.map_err(|_| CronError::UpdateTokenStatusFail)?;

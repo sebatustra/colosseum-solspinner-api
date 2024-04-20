@@ -62,11 +62,11 @@ async fn main(
         .await.expect("Failed to create job scheduler");
 
     scheduler.add(
-        CoinSelector::init_job("0 0 0 * * *", state.clone())
+        CoinSelector::init_job("0 */1 * * * *", state.clone())
     ).await.expect("Failed to schedule job");
 
     scheduler.add(
-        TokenUpdater::init_job("0 */5 * * * *", state)
+        TokenUpdater::init_job("0 */10 * * * *", state)
     ).await.expect("Failed to schedule job");
 
     scheduler.start().await.expect("Failed to start scheduler");
