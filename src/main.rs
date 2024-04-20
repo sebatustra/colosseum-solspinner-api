@@ -14,6 +14,7 @@ mod errors;
 mod clients;
 mod utils;
 mod cron_jobs;
+mod solana;
 
 #[derive(Clone)]
 pub struct AppState {
