@@ -62,7 +62,7 @@ async fn main(
         .await.expect("Failed to create job scheduler");
 
     scheduler.add(
-        CoinSelector::init_job("0 */1 * * * *", state.clone())
+        CoinSelector::init_job("0 0 0 * * *", state.clone())
     ).await.expect("Failed to schedule job");
 
     scheduler.add(
