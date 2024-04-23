@@ -45,6 +45,5 @@ impl SolanaClient {
                 Err(SolanaError::GetAccountInfoFail)
             }
         }
-
     }
 }
