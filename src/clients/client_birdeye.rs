@@ -54,7 +54,6 @@ impl BirdeyeClient {
     }
 
     pub async fn get_token_security(&self, token_pubkey: &str) -> Result<ResponseSecurity> {
-        println!("->> {:<12} - get_token_security", "CLIENT");
 
         let query_url = format!(
             "https://public-api.birdeye.so/defi/token_security?address={}",
@@ -78,7 +77,6 @@ impl BirdeyeClient {
     }
 
     pub async fn get_token_overview(&self, token_pubkey: &str) -> Result<ResponseOverview> {
-        println!("->> {:<12} - get_token_overview", "CLIENT");
 
         let query_url = format!(
             "https://public-api.birdeye.so/defi/token_overview?address={}",

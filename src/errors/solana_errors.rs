@@ -4,7 +4,10 @@ pub type Result<T> = core::result::Result<T, SolanaError>;
 
 pub enum SolanaError {
     PubkeyParsingFail,
-    GetAccountInfoFail
+    GetAccountInfoFail,
+    CreateAccountFail,
+    GetLatestBlockhasFail,
+    SendTransactionFail
 }
 
 impl fmt::Display for SolanaError {
@@ -14,7 +17,10 @@ impl fmt::Display for SolanaError {
             "{}",
             match self {
                 SolanaError::PubkeyParsingFail => "Error parsing Pubkey from str",
-                SolanaError::GetAccountInfoFail => "Error getting account info" 
+                SolanaError::GetAccountInfoFail => "Error getting account info",
+                SolanaError::CreateAccountFail => "Error creating the account",
+                SolanaError::GetLatestBlockhasFail => "Error getting latest blockhash",
+                SolanaError::SendTransactionFail => "Error sending and confirming transaction"
             }
         )
     }

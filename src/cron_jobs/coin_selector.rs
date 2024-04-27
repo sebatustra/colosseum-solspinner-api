@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use tokio_cron_scheduler::Job;
 
 use crate::{
-    clients::{client_birdeye::BirdeyeClient, clients_structs::TokenFromClient}, 
+    clients::{client_birdeye::BirdeyeClient, client_solana::SolanaClient, clients_structs::TokenFromClient}, 
     errors::cron_errors::{CronError, Result}, 
     models::model_token::{Token, TokenForCreate}, 
     AppState
@@ -24,7 +24,15 @@ impl CoinSelector {
                 let mut attempts = 0;
 
                 while attempts < 3 {
+
+                    let solana_client = SolanaClient::new(
+                        &state_copy.rpc_url, 
+                        &state_copy.payer_secret_key, 
+                        state_copy.comission_pubkey.clone()
+                    );
+
                     match Self::run_coin_selection(
+                        solana_client,
                         state_copy.clone(),
                     ).await {
                         Ok(_) => {
@@ -49,6 +57,7 @@ impl CoinSelector {
 
 impl CoinSelector {
     pub async fn run_coin_selection(
+        solana_client: SolanaClient,
         state: AppState, 
     ) -> Result<()> {
         println!("->> {:<12} - run_coin_selection", "SELECTOR");
@@ -85,7 +94,8 @@ impl CoinSelector {
 
         update_or_create_tokens(
             fully_filtered_tokens, 
-            current_active_tokens_pubkey, 
+            current_active_tokens_pubkey,
+            solana_client,
             state.clone()
         ).await?;
 
@@ -96,6 +106,7 @@ impl CoinSelector {
 async fn update_or_create_tokens(
     token_list: Vec<TokenForCron>,
     current_active_tokens_pubkey: Vec<String>,
+    solana_client: SolanaClient,
     state: AppState
 ) -> Result<()> {
     println!("length of tokens passed to update_or_create_tokens: {}", token_list.len());
@@ -124,9 +135,9 @@ async fn update_or_create_tokens(
                     .map_err(|_| CronError::UpdateTokenStatusFail)?
                 },
                 None => {
-                    println!("Token does not exists... creating it now: {}", token.address);
+                    println!("Token does not exists... creating it now: {}", &token.address);
                     let new_token = TokenForCreate {
-                        mint_pubkey: token.address,
+                        mint_pubkey: token.address.clone(),
                         symbol: token.symbol.clone(),
                         name: token.name.clone(),
                         logo_url: token.logo_uri.clone(),
@@ -140,12 +151,29 @@ async fn update_or_create_tokens(
                         is_active: true
                     };
 
+                    let ata_exists = solana_client.check_user_has_ata(
+                        &solana_client.comission_pubkey, 
+                        &token.address
+                    ).map_err(|e| {
+                        println!("ATA verification of existence failed. Error: {}", e);
+                        CronError::UpdateTokenStatusFail
+                    })?;
+
+                    if ata_exists == false {
+                        println!("ATA does not exists");
+                        solana_client.create_comission_ata(&token.address).map_err(|e| {
+                            println!("ATA creation failed. Error: {}", e);
+                            CronError::UpdateTokenStatusFail
+                        })?;
+                    }
+
                     Token::create_token(
                         new_token, 
                         state.clone()
                     )
                     .await
                     .map_err(|_| CronError::UpdateTokenStatusFail)?;
+
                 }
             }
         }

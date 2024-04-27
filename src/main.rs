@@ -1,5 +1,5 @@
 use axum::{middleware, Extension, Router};
-use clients::client_birdeye::BirdeyeClient;
+use clients::{client_birdeye::BirdeyeClient, client_solana::SolanaClient};
 use cron_jobs::token_updater::TokenUpdater;
 use sqlx::PgPool;
 use shuttle_runtime::SecretStore;
@@ -14,13 +14,15 @@ mod errors;
 mod clients;
 mod utils;
 mod cron_jobs;
-mod solana;
 
 #[derive(Clone)]
 pub struct AppState {
     db: PgPool,
     api_key: String,
     birdeye_client: BirdeyeClient,
+    rpc_url: String,
+    payer_secret_key: String,
+    comission_pubkey: String
 }
 
 #[shuttle_runtime::main]
@@ -38,9 +40,18 @@ async fn main(
     let birdeye_api_key = secrets.get("BIRDEYE_API_KEY")
         .expect("Birdeye API key not found in secrets!");
 
+    let rpc_url = secrets.get("HELIUS_RPC_URL")
+        .expect("Helius rpc url not found in secrets!");
+
+    let payer_secret_key = secrets.get("PAYER_WALLET")
+        .expect("Payer secret key not found in secrets!");
+
+    let comission_pubkey = secrets.get("COMISSION_PUBKEY")
+        .expect("Comission public key not found in secrets!");
+
     let birdeye_client = BirdeyeClient::new(&birdeye_api_key);
     
-    let state = AppState { db, api_key, birdeye_client };
+    let state = AppState { db, api_key, birdeye_client, rpc_url, payer_secret_key, comission_pubkey };
     
     let position_routes = web::routes_positions::routes(state.clone());
     let user_routes = web::routes_users::routes(state.clone());
@@ -63,7 +74,7 @@ async fn main(
         .await.expect("Failed to create job scheduler");
 
     scheduler.add(
-        CoinSelector::init_job("0 0 0 * * *", state.clone())
+        CoinSelector::init_job("0 */2 * * * *", state.clone())
     ).await.expect("Failed to schedule job");
 
     scheduler.add(
